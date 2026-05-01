@@ -1,0 +1,1839 @@
+<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>AML Causal-DAG v2 · with Plotly Charts · Ayass Bioscience</title>
+<style>
+  :root {
+    --bg-1: #0a1929;
+    --bg-2: #0f2a44;
+    --bg-3: #1e3a5f;
+    --txt: #ffffff;
+    --txt-muted: #c9d4e3;
+    --accent: #4fc3f7;
+    --accent-2: #81d4fa;
+    --hi: #ffd54f;
+    --good: #81c784;
+    --bad: #e57373;
+    --warn: #ffb74d;
+    --tier-a: #64b5f6;
+    --tier-b: #ba68c8;
+    --tier-c: #4db6ac;
+    --tier-d: #ff8a65;
+    --card-bg: rgba(255,255,255,0.06);
+    --card-border: rgba(255,255,255,0.18);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
+    background-attachment: fixed;
+    color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px; line-height: 1.55;
+    overflow: hidden;
+  }
+  /* Logo top-left, white version */
+  .logo-bar {
+    position: fixed; top: 18px; left: 24px; z-index: 100;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-bar img { height: 56px; width: auto; opacity: 0.95; }
+  .logo-bar .brand {
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--txt-muted); border-left: 2px solid var(--accent); padding-left: 12px;
+  }
+  /* Slide deck */
+  .deck {
+    position: relative; width: 100vw; height: 100vh;
+    overflow: hidden;
+  }
+  .slide {
+    position: absolute; inset: 0;
+    padding: 110px 80px 90px 80px;
+    opacity: 0; transform: translateX(40px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    overflow-y: auto;
+  }
+  .slide.active {
+    opacity: 1; transform: translateX(0); pointer-events: auto;
+  }
+  .slide-inner {
+    max-width: 1400px; margin: 0 auto;
+  }
+  .slide-foot {
+    position: absolute; bottom: 18px; left: 80px; right: 80px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--txt-muted); font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding-top: 12px;
+  }
+  /* Typography */
+  h1 { font-size: 32px; line-height: 1.2; margin: 0 0 18px 0; color: var(--txt); font-weight: 700; }
+  h2 { font-size: 22px; margin: 0 0 14px 0; color: var(--accent-2); font-weight: 500; }
+  h3 { font-size: 17px; margin: 0 0 10px 0; color: var(--accent); font-weight: 600; }
+  p, li { font-size: 14.5px; color: var(--txt); }
+  p.lead { font-size: 17px; color: var(--txt-muted); }
+  p.subtitle { font-size: 18px; color: var(--accent-2); margin-top: 0; }
+  p.note { font-size: 13px; color: var(--txt-muted); font-style: italic; margin-top: 14px; }
+  p.kv { font-size: 13px; color: var(--txt-muted); margin: 4px 0; }
+  p.hint { font-size: 12px; color: var(--txt-muted); letter-spacing: 0.1em; }
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  li { margin: 6px 0; }
+  b, strong { color: #fff; font-weight: 700; }
+  em { color: var(--accent-2); font-style: italic; }
+  span.good { color: var(--good); font-weight: 600; }
+  span.bad { color: var(--bad); font-weight: 600; }
+  span.vs { color: var(--accent); font-weight: 600; padding: 0 4px; }
+  /* Hero (title slides) */
+  .hero { text-align: center; padding-top: 30px; }
+  .hero h1 { font-size: 48px; }
+  .hero h2 { font-size: 26px; color: var(--accent-2); }
+  .hero .meta {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    max-width: 720px; margin: 32px auto;
+  }
+  .hero .meta > div {
+    display: flex; flex-direction: column; gap: 4px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 8px; padding: 12px 16px;
+  }
+  .hero .meta .lbl { font-size: 11px; color: var(--txt-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .hero .meta .val { font-size: 14px; color: var(--txt); }
+  /* Cards */
+  .card {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 18px 20px;
+  }
+  .card.hi { border-color: var(--accent); background: rgba(79,195,247,0.08); }
+  .card.warn { border-color: var(--warn); background: rgba(255,183,77,0.08); }
+  /* Grids */
+  .grid { display: grid; gap: 14px; margin: 12px 0; }
+  .grid.two { grid-template-columns: repeat(2, 1fr); }
+  .grid.three { grid-template-columns: repeat(3, 1fr); }
+  .grid.four { grid-template-columns: repeat(4, 1fr); }
+  .grid.four.small .card { padding: 12px 14px; }
+  .grid.stat { grid-template-columns: repeat(4, 1fr); }
+  .stat-tile {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 18px; text-align: center;
+  }
+  .stat-tile .num { font-size: 36px; font-weight: 700; color: var(--accent); }
+  .stat-tile .lbl { font-size: 12px; color: var(--txt-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 6px; }
+  /* Tier tiles */
+  .tier { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; }
+  .tier h3 { margin: 0 0 8px 0; font-size: 18px; }
+  .tier p { margin: 4px 0; font-size: 13px; color: var(--txt-muted); }
+  .tier .ex { margin-top: 10px; font-size: 12.5px; color: var(--txt); font-weight: 600; }
+  .tier.tA { border-color: var(--tier-a); }
+  .tier.tA h3 { color: var(--tier-a); }
+  .tier.tB { border-color: var(--tier-b); }
+  .tier.tB h3 { color: var(--tier-b); }
+  .tier.tC { border-color: var(--tier-c); }
+  .tier.tC h3 { color: var(--tier-c); }
+  .tier.tD { border-color: var(--tier-d); }
+  .tier.tD h3 { color: var(--tier-d); }
+  /* Tier markers in tables */
+  td.tA { color: var(--tier-a); font-weight: 700; text-align: center; }
+  td.tB { color: var(--tier-b); font-weight: 700; text-align: center; }
+  td.tC { color: var(--tier-c); font-weight: 700; text-align: center; }
+  td.tD { color: var(--tier-d); font-weight: 700; text-align: center; }
+  /* Tables */
+  table.tbl { width: 100%; border-collapse: collapse; margin: 8px 0 10px 0; }
+  table.tbl th, table.tbl td {
+    text-align: left; padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    font-size: 13px; color: var(--txt); vertical-align: top;
+  }
+  table.tbl.small th, table.tbl.small td { font-size: 12px; padding: 6px 8px; }
+  table.tbl thead th {
+    background: rgba(79,195,247,0.15); color: var(--accent-2);
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+  }
+  table.tbl tbody tr:hover { background: rgba(255,255,255,0.04); }
+  table.tbl td.hi { color: var(--hi); font-weight: 600; }
+  /* Callout */
+  .callout {
+    background: linear-gradient(90deg, rgba(79,195,247,0.10), rgba(79,195,247,0.04));
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px; border-radius: 6px;
+    margin: 14px 0; font-size: 14px; color: var(--txt);
+  }
+  /* Big numbers */
+  .big { font-size: 34px; font-weight: 700; color: var(--hi); }
+  /* Caveats / conclusions */
+  ul.caveats li, ul.concl li { font-size: 14px; line-height: 1.5; margin-bottom: 10px; }
+  /* Nav controls */
+  .nav {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 12px; align-items: center; z-index: 100;
+    background: rgba(10,25,41,0.85); backdrop-filter: blur(8px);
+    border: 1px solid var(--card-border); border-radius: 999px;
+    padding: 8px 16px;
+  }
+  .nav button {
+    background: transparent; border: 1px solid rgba(255,255,255,0.25); color: var(--txt);
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    font-size: 13px; font-weight: 500; transition: all 0.2s;
+  }
+  .nav button:hover { background: rgba(79,195,247,0.20); border-color: var(--accent); }
+  .nav .progress { font-size: 12px; color: var(--txt-muted); padding: 0 8px; }
+  .nav .play-btn { background: var(--accent); color: var(--bg-1); border-color: var(--accent); font-weight: 600; }
+  .nav .play-btn:hover { background: var(--accent-2); }
+  /* Audio progress bar */
+  .audio-bar {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--hi));
+    z-index: 200; transition: width 0.1s linear;
+  }
+  /* Index */
+  .toc-toggle {
+    position: fixed; top: 18px; right: 24px; z-index: 100;
+    background: rgba(10,25,41,0.85); backdrop-filter: blur(8px);
+    border: 1px solid var(--card-border); border-radius: 8px;
+    padding: 8px 14px; color: var(--txt); cursor: pointer; font-size: 13px;
+  }
+  .toc {
+    position: fixed; top: 0; right: 0; width: 360px; height: 100vh;
+    background: rgba(10,25,41,0.97); backdrop-filter: blur(12px);
+    border-left: 1px solid var(--card-border);
+    transform: translateX(100%); transition: transform 0.3s ease;
+    overflow-y: auto; z-index: 99; padding: 70px 20px 20px 20px;
+  }
+  .toc.open { transform: translateX(0); }
+  .toc h3 { font-size: 14px; color: var(--accent-2); margin: 0 0 14px 0; }
+  .toc a {
+    display: block; padding: 8px 12px; margin: 2px 0;
+    color: var(--txt-muted); text-decoration: none; font-size: 12.5px;
+    border-radius: 6px; border-left: 2px solid transparent;
+  }
+  .toc a:hover { background: rgba(79,195,247,0.10); color: var(--txt); border-left-color: var(--accent); }
+  .toc a.active { background: rgba(79,195,247,0.18); color: var(--txt); border-left-color: var(--accent); }
+  .toc a .num { display: inline-block; width: 32px; color: var(--accent); font-weight: 600; }
+
+  /* Chart styling */
+  .chart {
+    width: 100%; height: 360px;
+    margin: 14px 0;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 8px;
+  }
+  .chart-cap {
+    font-size: 11.5px; color: var(--txt-muted);
+    text-align: center; margin-top: -6px; margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+</style>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+  <div class='audio-bar' id='audioBar'></div>
+
+  <div class='logo-bar'>
+    <img src='assets/ayass_logo_white.png' alt='Ayass Bioscience'>
+    <div class='brand'>BiRAGAS v2.0 · 2026-04-29</div>
+  </div>
+
+  <button class='toc-toggle' id='tocToggle' aria-expanded='false'>☰ Outline</button>
+  <aside class='toc' id='toc'>
+    <h3>Outline · 44 slides</h3>
+    <a href='#' data-go='1'><span class='num'>01</span> AML Causal-DAG · Updated Novelty Assessment v2</a><a href='#' data-go='2'><span class='num'>02</span> Executive Summary</a><a href='#' data-go='3'><span class='num'>03</span> Headline · WDR4 Emerges Study-Wide #1</a><a href='#' data-go='4'><span class='num'>04</span> Headline · Formal Tier A/B/C/D Framework</a><a href='#' data-go='5'><span class='num'>05</span> Headline · Six Entirely New Top Targets</a><a href='#' data-go='6'><span class='num'>06</span> Headline · METTL7A NPM1 + Secondary Paradox</a><a href='#' data-go='7'><span class='num'>07</span> Headline · CCT8+IKZF1 + Novelty Density</a><a href='#' data-go='8'><span class='num'>08</span> What Changed · Delta vs Prior Novelty Report</a><a href='#' data-go='9'><span class='num'>09</span> Quality Metrics · Three Contexts</a><a href='#' data-go='10'><span class='num'>10</span> Why C3 Wins · Resistance is a Selected State</a><a href='#' data-go='11'><span class='num'>11</span> Tier A/B/C/D · Cell-Line Mapping</a><a href='#' data-go='12'><span class='num'>12</span> Tier A · Pan-AML Drivers</a><a href='#' data-go='13'><span class='num'>13</span> Tier A Deep Dive · RUVBL2 · MRPS16 · CCT8</a><a href='#' data-go='14'><span class='num'>14</span> Tier A Continued · GABARAPL1 · DAXX · ATM</a><a href='#' data-go='15'><span class='num'>15</span> Tier B · Resistance-Specific Both Contexts</a><a href='#' data-go='16'><span class='num'>16</span> Tier B Deep Dive · MLYCD · GANAB · MAST2 · IKZF1</a><a href='#' data-go='17'><span class='num'>17</span> Tier C · Pre-Resistance Sensitisers</a><a href='#' data-go='18'><span class='num'>18</span> WDR4 · The Hero Slide</a><a href='#' data-go='19'><span class='num'>19</span> Tier C · CMKLR1 · ZCCHC4 · HEMK1</a><a href='#' data-go='20'><span class='num'>20</span> Tier D · Acquired Resistance</a><a href='#' data-go='21'><span class='num'>21</span> Tier D Deep Dive · POLR2C · DPAGT1</a><a href='#' data-go='22'><span class='num'>22</span> Tier D · LINC00494 · RRM2 · SH3BP2 · GINS1</a><a href='#' data-go='23'><span class='num'>23</span> LINC00494 · Largest Single Effect, Strictest Gate</a><a href='#' data-go='24'><span class='num'>24</span> CMKLR1 · The Dependency Switch</a><a href='#' data-go='25'><span class='num'>25</span> METTL7A · NPM1-Cluster Stratification</a><a href='#' data-go='26'><span class='num'>26</span> Discovery T2 · PSMA1 · ENO1 · EBPL · FCN1 · ITPR2 · HTR7</a><a href='#' data-go='27'><span class='num'>27</span> PubMed Novelty · Tier α Breakdown</a><a href='#' data-go='28'><span class='num'>28</span> PubMed · Tier β/γ Targets</a><a href='#' data-go='29'><span class='num'>29</span> Combination Hypotheses · Overview</a><a href='#' data-go='30'><span class='num'>30</span> CCT8 + IKZF1 · Synergy 3.237 Hero</a><a href='#' data-go='31'><span class='num'>31</span> OTS167 + WDR4 · The Alachkar Lab Integration</a><a href='#' data-go='32'><span class='num'>32</span> WDR4 + EPC2 · Synergy Index 9.004 ⚠ Caution</a><a href='#' data-go='33'><span class='num'>33</span> Wet-Lab Plan · Resistant Lines · Tier D</a><a href='#' data-go='34'><span class='num'>34</span> Wet-Lab Plan · Parental Lines · Tier C</a><a href='#' data-go='35'><span class='num'>35</span> Centrality Artefacts · MLYCD · PPP1R3E</a><a href='#' data-go='36'><span class='num'>36</span> Caveats · Pipeline State 1</a><a href='#' data-go='37'><span class='num'>37</span> Caveats · Pipeline State 2</a><a href='#' data-go='38'><span class='num'>38</span> Strategic Recommendation · Top Four Wet-Lab Arms</a><a href='#' data-go='39'><span class='num'>39</span> Conclusions · Headlines 1</a><a href='#' data-go='40'><span class='num'>40</span> Conclusions · Headlines 2</a><a href='#' data-go='41'><span class='num'>41</span> Action Timeline · 18-Month Roadmap</a><a href='#' data-go='42'><span class='num'>42</span> Risk Register · Top Five Failure Modes</a><a href='#' data-go='43'><span class='num'>43</span> Sources · Reports + PubMed via MCP</a><a href='#' data-go='44'><span class='num'>44</span> Closing · Next Decision</a>
+  </aside>
+
+  <main class='deck' id='deck'>
+    
+    <section class='slide' data-idx='1' aria-label='AML Causal-DAG · Updated Novelty Assessment v2'>
+      <div class='slide-inner'>
+        
+    <div class='hero'>
+      <h1>AML Causal-DAG</h1>
+      <h2>Updated Novelty Assessment · v2.0</h2>
+      <p class='subtitle'>Discovery v2 · Primary FLT3-ITD · Secondary Resistance · Cross-Context Tier A/B/C/D</p>
+      <div class='meta'>
+        <div><span class='lbl'>Authoring</span><span class='val'>Ayass Bioscience LLC × Dr. Houda Alachkar Lab (USC)</span></div>
+        <div><span class='lbl'>Date</span><span class='val'>2026-04-29</span></div>
+        <div><span class='lbl'>Pipeline</span><span class='val'>BiRAGAS v2.0</span></div>
+        <div><span class='lbl'>Supersedes</span><span class='val'>Novelty Assessment 2026-04-22</span></div>
+      </div>
+      <p class='hint'>44 slides · Jenny Neural narration · Use ← / → or play/pause</p>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>01 / 44</span>
+        <span class='ttl'>AML Causal-DAG · Updated Novelty Assessment v2</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='2' aria-label='Executive Summary'>
+      <div class='slide-inner'>
+        
+    <h1>Executive Summary</h1>
+    <p class='lead'>This report supersedes the prior novelty assessment by integrating four newly-released BiRAGAS reports dated <b>2026-04-29</b>.</p>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>Source reports</h3>
+        <ul>
+          <li>BiRAGAS_Discovery_Report_v2</li>
+          <li>BiRAGAS_Primary_Context_Report</li>
+          <li>BiRAGAS_Secondary_Report</li>
+          <li>BiRAGAS_CrossContext_Integration</li>
+        </ul>
+      </div>
+      <div class='card'>
+        <h3>Three contexts</h3>
+        <ul>
+          <li><b>C1 Discovery</b> — n=469 (450 AML + 19 normal)</li>
+          <li><b>C2 Primary</b> — n=450 (107 FLT3+ vs 343 FLT3−)</li>
+          <li><b>C3 Secondary</b> — n=153 (46 R + 107 init)</li>
+        </ul>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>Bottom line:</b> WDR4 is the single highest-scoring target in the entire study (Primary 0.916).
+      Twelve of fourteen newly-surfaced targets are Tier α — fully novel, zero PubMed in their proposed AML context.
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>02 / 44</span>
+        <span class='ttl'>Executive Summary</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='3' aria-label='Headline · WDR4 Emerges Study-Wide #1'>
+      <div class='slide-inner'>
+        
+    <h1>WDR4 — highest-scoring single target in the entire study</h1>
+    <div class='grid stat'>
+      <div class='stat-tile'><div class='num'>0.916</div><div class='lbl'>Primary score (rank #1)</div></div>
+      <div class='stat-tile'><div class='num'>−0.250</div><div class='lbl'>Disease effect</div></div>
+      <div class='stat-tile'><div class='num'>NE</div><div class='lbl'>DepMap (NON_ESSENTIAL)</div></div>
+      <div class='stat-tile'><div class='num'>MR✓</div><div class='lbl'>MR-immune</div></div>
+    </div>
+    <ul>
+      <li>Prior novelty report had WDR4 in the translation axis but did not capture its <b>study-wide rank #1 status</b>.</li>
+      <li>WDR4 perturbation produces the largest <b>combined disease effect adjusted for resistance escape risk and compensation risk</b> in the FLT3-ITD-specific causal network.</li>
+      <li>Bypass fraction <b>0.00</b>; patient responder fraction <b>100%</b>.</li>
+      <li>Translation axis: tRNA m7G modification at position 46 — codon-biased elongation block, complementary to OTS167 cap-dependent initiation.</li>
+    </ul>
+    
+      
+        <div class="chart" id="chart-3"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>03 / 44</span>
+        <span class='ttl'>Headline · WDR4 Emerges Study-Wide #1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='4' aria-label='Headline · Formal Tier A/B/C/D Framework'>
+      <div class='slide-inner'>
+        
+    <h1>From Tier α/β/γ/δ → Formal Tier A/B/C/D</h1>
+    <p class='lead'>The Cross-Context Integration report introduces context-grounded resistance tiers — superseding the prior novelty-based tier scheme.</p>
+    <div class='grid four'>
+      <div class='tier tA'><h3>Tier A</h3><p>Pan-AML drivers · strong in C1+C2+C3</p><div class='ex'>RUVBL2 · MRPS16 · CCT8 · GABARAPL1 · DAXX · ATM</div></div>
+      <div class='tier tB'><h3>Tier B</h3><p>FLT3-ITD-specific · strong C2+C3, absent C1</p><div class='ex'>MLYCD · GANAB · MAST2 · IKZF1</div></div>
+      <div class='tier tC'><h3>Tier C</h3><p>Pre-resistance sensitisers · strong C2 only</p><div class='ex'>WDR4 · CMKLR1 · ZCCHC4 · HEMK1</div></div>
+      <div class='tier tD'><h3>Tier D</h3><p>Acquired resistance · strong C3 only</p><div class='ex'>POLR2C · DPAGT1 · LINC00494 · RRM2 · SH3BP2 · GINS1</div></div>
+    </div>
+    
+      
+        <div class="chart" id="chart-4"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>04 / 44</span>
+        <span class='ttl'>Headline · Formal Tier A/B/C/D Framework</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='5' aria-label='Headline · Six Entirely New Top Targets'>
+      <div class='slide-inner'>
+        
+    <h1>Six new targets not in the prior tier-α list</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>Tier</th><th>Key fact</th></tr></thead>
+      <tbody>
+        <tr><td>CMKLR1</td><td>C</td><td>FLT3-differential dependency switch · NON_ESSENTIAL · druggable GPCR</td></tr>
+        <tr><td>GANAB</td><td>B</td><td>N-glycosylation quality control · castanospermine probe · FLT3 receptor biology</td></tr>
+        <tr><td>LINC00494</td><td>D</td><td>Uncharacterised lncRNA · largest resistance effect <b>−1.655</b></td></tr>
+        <tr><td>SH3BP2</td><td>D</td><td>NON_ESSENTIAL · 3× resistance-enriched · cherubism adaptor</td></tr>
+        <tr><td>RRM2</td><td>D</td><td>DNA repair in quiescent resistant cells · POLR2C+RRM2 additive −2.191</td></tr>
+        <tr><td>DPAGT1</td><td>D</td><td>First committed step of N-linked glycoprotein synthesis · tunicamycin probe</td></tr>
+      </tbody>
+    </table>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>05 / 44</span>
+        <span class='ttl'>Headline · Six Entirely New Top Targets</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='6' aria-label='Headline · METTL7A NPM1 + Secondary Paradox'>
+      <div class='slide-inner'>
+        
+    <h1>Two more headline shifts</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>METTL7A · NPM1-cluster magnitude quantified</h3>
+        <p><b>−0.947</b> cluster-specific effect <span class='vs'>vs</span> <b>−0.205</b> population — <b>4.6× subgroup specificity</b></p>
+        <p>Strongest patient-stratification signal in the entire study. NPM1-mutated cluster only.</p>
+        <p class='note'>Validate in OCI-AML3 (NPM1-mut) only. MV4-11 (NPM1-WT) as negative control.</p>
+      </div>
+      <div class='card'>
+        <h3>Secondary-context quality paradox</h3>
+        <p>n=46 cohort produced:</p>
+        <ul>
+          <li>3.4% strong-causal edges <span class='good'>3.8× C1/C2</span></li>
+          <li>45.8% confounding rate <span class='good'>(best)</span></li>
+          <li>4.4% MR-immune <span class='good'>8.8× C1/C2</span></li>
+          <li>17.5% hallucination flags <span class='good'>(best)</span></li>
+        </ul>
+        <p class='note'>The resistance transcriptome is more focused and more causally resolvable than either pan-AML or pre-resistance contexts.</p>
+      </div>
+    </div>
+    
+      
+        <div class="chart" id="chart-6"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>06 / 44</span>
+        <span class='ttl'>Headline · METTL7A NPM1 + Secondary Paradox</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='7' aria-label='Headline · CCT8+IKZF1 + Novelty Density'>
+      <div class='slide-inner'>
+        
+    <h1>The headline combination + novelty validation</h1>
+    <div class='grid two'>
+      <div class='card hi'>
+        <h3>CCT8 + IKZF1 synergy <span class='big'>3.237</span></h3>
+        <p>Highest co-target synergy in the entire dataset. Chaperonin × IKAROS transcription factor.</p>
+        <p>Mechanism: CCT/TRiC chaperonin folds nascent IKAROS — destabilising both via two non-redundant pathways should be supra-additive.</p>
+        <p class='note'>Translation: lenalidomide (FDA-approved IKZF1-degrader) + CCT8 siRNA in MV4-11 + resistant lines.</p>
+      </div>
+      <div class='card hi'>
+        <h3>Novelty validation · PubMed via MCP</h3>
+        <div class='big'>9 of 10</div>
+        <p>newly-surfaced targets have <b>zero PubMed papers</b> in their proposed AML context.</p>
+        <p>12 of 14 v2 targets are Tier α — one of the most novelty-dense computationally-derived target sets for AML in recent literature.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>07 / 44</span>
+        <span class='ttl'>Headline · CCT8+IKZF1 + Novelty Density</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='8' aria-label='What Changed · Delta vs Prior Novelty Report'>
+      <div class='slide-inner'>
+        
+    <h1>Delta vs prior novelty assessment</h1>
+    <table class='tbl small'>
+      <thead><tr><th>Update</th><th>Prior</th><th>v2</th><th>Significance</th></tr></thead>
+      <tbody>
+        <tr><td>WDR4 ranking</td><td>In translation axis</td><td>Primary #1, score 0.916</td><td>Highest priority parental bet</td></tr>
+        <tr><td>Tier framework</td><td>Tier α/β/γ/δ novelty-based</td><td>Tier A/B/C/D context-grounded</td><td>Cell-line ordered prioritisation</td></tr>
+        <tr><td>CMKLR1</td><td>Not surfaced</td><td>C2 #10 · NON_ESSENTIAL</td><td>FLT3-differential switch</td></tr>
+        <tr><td>GANAB</td><td>Not surfaced</td><td>C2 #9 · C3 #27 · Tier B both</td><td>N-glycosylation QC</td></tr>
+        <tr><td>LINC00494</td><td>Not surfaced</td><td>C3 #4 · effect −1.655</td><td>Largest single effect</td></tr>
+        <tr><td>SH3BP2</td><td>Not surfaced</td><td>C3 #8 · NON_ESSENTIAL</td><td>Best NE resistance target</td></tr>
+        <tr><td>RRM2</td><td>Not surfaced</td><td>C3 #5 · score 0.621</td><td>POLR2C+RRM2 additive −2.191</td></tr>
+        <tr><td>METTL7A magnitude</td><td>Mentioned generally</td><td>NPM1 −0.947 vs pop −0.205 (4.6×)</td><td>Strongest stratification signal</td></tr>
+        <tr><td>EBPL/FCN1/ITPR2/HTR7</td><td>Not surfaced</td><td>Discovery novel · NON_ESSENTIAL</td><td>Wet-lab safe novel targets</td></tr>
+        <tr><td>CCT8+IKZF1 synergy 3.237</td><td>Not identified</td><td>Highest in dataset</td><td>Category-defining combination</td></tr>
+        <tr><td>Secondary quality paradox</td><td>Not quantified</td><td>n=46 → 3.4% strong-causal · 4.4% MR-immune · 17.5% hallucination</td><td>Per-target confidence higher than C1/C2</td></tr>
+        <tr><td>MLYCD CI artefact</td><td>Not flagged</td><td>CI 12.87 · perturbation only −0.063</td><td>Demote despite centrality</td></tr>
+        <tr><td>PPP1R3E artefact</td><td>Not flagged</td><td>CI 74.1 · 6× next gene</td><td>Hub-isolation artefact</td></tr>
+        <tr><td>96.9% Granger dependency</td><td>Not flagged</td><td>Pipeline transcriptomic-time-series heavy</td><td>Inferred causal, not validated</td></tr>
+      </tbody>
+    </table>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>08 / 44</span>
+        <span class='ttl'>What Changed · Delta vs Prior Novelty Report</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='9' aria-label='Quality Metrics · Three Contexts'>
+      <div class='slide-inner'>
+        
+    <h1>Quality metrics across three contexts</h1>
+    <table class='tbl'>
+      <thead><tr><th>Metric</th><th>C1 Discovery (n=469)</th><th>C2 Primary (n=450)</th><th>C3 Secondary (n=153)</th></tr></thead>
+      <tbody>
+        <tr><td>Strong-causal edges</td><td>708 (0.9%)</td><td>532 (0.9%)</td><td class='hi'>312 (3.4%) · 3.8× best</td></tr>
+        <tr><td>Confounding rate</td><td>82.5%</td><td>89.9%</td><td class='hi'>45.8% · best</td></tr>
+        <tr><td>MR-immune fraction</td><td>0.5%</td><td>0.5%</td><td class='hi'>4.4% · 8.8× best</td></tr>
+        <tr><td>Hallucination flags</td><td>43.6%</td><td>53.0%</td><td class='hi'>17.5% · best</td></tr>
+        <tr><td>Database evidence</td><td>1.1%</td><td>1.1%</td><td class='hi'>28.0% · 25× richest</td></tr>
+        <tr><td>Direction confirmed</td><td>18.1%</td><td>18.0%</td><td>Comparable + stronger MR</td></tr>
+        <tr><td>Pathway-program nodes</td><td>95</td><td>30</td><td class='hi'>217 (most)</td></tr>
+        <tr><td>DAG size (edges)</td><td>82,043</td><td>57,195</td><td class='hi'>9,193 (most focused)</td></tr>
+        <tr><td>Total nodes</td><td>3,956</td><td>2,120</td><td>1,556</td></tr>
+      </tbody>
+    </table>
+    <p class='note'>Smallest cohort → best causal resolution. The paradox of focus.</p>
+    
+      
+        <div class="chart" id="chart-9"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>09 / 44</span>
+        <span class='ttl'>Quality Metrics · Three Contexts</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='10' aria-label='Why C3 Wins · Resistance is a Selected State'>
+      <div class='slide-inner'>
+        
+    <h1>The resistance transcriptome is a selected regulatory state</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>Why C1+C2 are noisier</h3>
+        <ul>
+          <li>Initial-diagnosis FLT3-ITD A.M.L. samples carry every confounding co-mutation: DNMT3A, IDH1/2, TET2, NPM1, RUNX1, plus the FLT3-ITD itself</li>
+          <li>Heterogeneous transcriptional background</li>
+          <li>Drives high confounding rates (82.5% / 89.9%)</li>
+        </ul>
+      </div>
+      <div class='card'>
+        <h3>Why C3 is cleaner</h3>
+        <ul>
+          <li>Resistant cells have already passed the bottleneck of FLT3 inhibitor selection</li>
+          <li>Only gene programs that survived selection remain active</li>
+          <li>DAG is smaller (9,193 edges), pathway-richer (217 nodes), per-edge more interpretable</li>
+          <li>Database evidence 28.0% vs 1.1% in C1</li>
+        </ul>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>Implication:</b> Tier D acquired-resistance findings (POLR2C, DPAGT1, LINC00494, RRM2, SH3BP2, GINS1)
+      carry <b>higher per-target causal confidence</b> than Tier A or Tier C at the same nominal rank.
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>10 / 44</span>
+        <span class='ttl'>Why C3 Wins · Resistance is a Selected State</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='11' aria-label='Tier A/B/C/D · Cell-Line Mapping'>
+      <div class='slide-inner'>
+        
+    <h1>Cell-line mapping by tier</h1>
+    <table class='tbl'>
+      <thead><tr><th>Tier</th><th>Definition</th><th>Validate in</th><th>Therapeutic question</th></tr></thead>
+      <tbody>
+        <tr><td class='tA'>A</td><td>Strong in C1+C2+C3</td><td>Any AML line</td><td>Broad AML therapy backbone</td></tr>
+        <tr><td class='tB'>B</td><td>Strong C2+C3 (FLT3-ITD axis)</td><td>Parental + resistant FLT3-ITD lines</td><td>Mechanism across the FLT3-ITD disease arc</td></tr>
+        <tr><td class='tC'>C</td><td>Strong C2 only</td><td>Parental FLT3-ITD (MV4-11, MOLM-13)</td><td>Pre-resistance sensitisation · resistance prevention</td></tr>
+        <tr><td class='tD'>D</td><td>Strong C3 only</td><td>Resistant lines (gilteritinib-R, quizartinib-R, midostaurin-R)</td><td>Acquired-resistance salvage · post-FLT3i + post-venetoclax R/R AML</td></tr>
+      </tbody>
+    </table>
+    <p class='note'>The framework directly answers <em>which cells, which clinical question, which timeline</em> for each target.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>11 / 44</span>
+        <span class='ttl'>Tier A/B/C/D · Cell-Line Mapping</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='12' aria-label='Tier A · Pan-AML Drivers'>
+      <div class='slide-inner'>
+        
+    <h1>Tier A · pan-AML drivers (strong in all three contexts)</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>C1/C2/C3 rank</th><th>Score</th><th>CRISPR · Tox</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>RUVBL2</td><td>1 / 2 / 3</td><td>0.765 / 0.772 / 0.709</td><td>PE · H</td><td>Validate pan-context · Priority #3 resistant · activation strategy</td></tr>
+        <tr><td>MRPS16</td><td>3 / 3 / 6</td><td>0.690 / 0.721 / 0.567</td><td>PE · H</td><td>Most consistent · Priority #5 · venetoclax connection</td></tr>
+        <tr><td>CCT8</td><td>2 / 29 / 7</td><td>0.694 / 0.392 / 0.512</td><td>PE · H</td><td>Pan-AML + resistance · CCT8+IKZF1 synergy 3.237</td></tr>
+        <tr><td>GABARAPL1</td><td>T1 / 7 / 18</td><td>0.328 / 0.632 / 0.407</td><td>NE · L</td><td>Autophagy T1 all contexts · NON_ESSENTIAL · venetoclax combo</td></tr>
+        <tr><td>DAXX</td><td>12·45 / 15 / 17</td><td>0.485 / 0.488 / 0.416</td><td>NE · L</td><td>Pan-context confirmatory · known A.M.L. chromatin factor</td></tr>
+        <tr><td>ATM</td><td>16 / 19 / 48</td><td>0.427 / 0.431 / —</td><td>NE · L</td><td>Pan-context BUT bypass 0.5–0.98 — combination only</td></tr>
+      </tbody>
+    </table>
+    <p class='note'><b>De-prioritise as resistance-specific targets</b> — but they remain validated for broad A.M.L. therapy.</p>
+    
+      
+        <div class="chart" id="chart-12"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>12 / 44</span>
+        <span class='ttl'>Tier A · Pan-AML Drivers</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='13' aria-label='Tier A Deep Dive · RUVBL2 · MRPS16 · CCT8'>
+      <div class='slide-inner'>
+        
+    <h1>The three Tier A pillars</h1>
+    <div class='grid three'>
+      <div class='card'>
+        <h3>RUVBL2</h3>
+        <p class='kv'>Class · AAA+ ATPase · chromatin remodelling complex</p>
+        <p class='kv'>Effect · −1.10 absolute (largest of any Tier A)</p>
+        <p class='kv'>Strategy · activation rather than inhibition (paradoxical)</p>
+        <p>RUVBL2 + PSMA1 combination: −1.765 (largest Discovery-context combined effect).</p>
+        <p>RUVBL2 + CMKLR1 combination: −1.593 best pre-resistance pair.</p>
+      </div>
+      <div class='card'>
+        <h3>MRPS16</h3>
+        <p class='kv'>Class · mitoribosome S16 · mitochondrial translation</p>
+        <p class='kv'>Effect · −0.44 in resistant lines</p>
+        <p class='kv'>Probe · tedizolid (mitoribosome inhibitor)</p>
+        <p>Most consistent across all three contexts. Connects to venetoclax via mitochondrial dependency.</p>
+        <p>Most aim-3-aligned Tier A target for the venetoclax-aware AML population.</p>
+      </div>
+      <div class='card'>
+        <h3>CCT8</h3>
+        <p class='kv'>Class · CCT/TRiC chaperonin subunit</p>
+        <p class='kv'>Effect · cross-context Discovery + Secondary</p>
+        <p class='kv'>Headline · CCT8 + IKZF1 synergy 3.237</p>
+        <p>Folds nascent transcription factors including IKAROS.</p>
+        <p>Combination with lenalidomide is the clinically translatable arm.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>13 / 44</span>
+        <span class='ttl'>Tier A Deep Dive · RUVBL2 · MRPS16 · CCT8</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='14' aria-label='Tier A Continued · GABARAPL1 · DAXX · ATM'>
+      <div class='slide-inner'>
+        
+    <h1>Three more Tier A targets</h1>
+    <div class='grid three'>
+      <div class='card'>
+        <h3>GABARAPL1</h3>
+        <p class='kv'>Class · autophagy / LC3 family</p>
+        <p class='kv'>Effect · cross-context T1 in all three DAGs</p>
+        <p class='kv'>CRISPR · NON_ESSENTIAL · low toxicity</p>
+        <p>Pairs with NBR1 in cross-context combination — Disc Jaccard 1.0, combined effect −1.39.</p>
+        <p><b>Only NON_ESSENTIAL Tier A target</b> — wet-lab safest pan-AML candidate.</p>
+      </div>
+      <div class='card'>
+        <h3>DAXX</h3>
+        <p class='kv'>Class · chromatin factor · ATRX/DAXX H3.3 deposition</p>
+        <p class='kv'>Effect · pan-context confirmatory</p>
+        <p>Known A.M.L. chromatin biology — novelty is direction-flip framing in v2.</p>
+        <p>Lower priority than RUVBL2/MRPS16 because mechanism is less novel.</p>
+      </div>
+      <div class='card'>
+        <h3>ATM</h3>
+        <p class='kv'>Class · DNA damage response kinase</p>
+        <p class='kv'>Caveat · bypass fraction 0.5–0.98 across contexts</p>
+        <p><b>Combination only · never monotherapy</b></p>
+        <p>Useful as DNA damage response sensitiser combined with cytarabine or PARP inhibitors.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>14 / 44</span>
+        <span class='ttl'>Tier A Continued · GABARAPL1 · DAXX · ATM</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='15' aria-label='Tier B · Resistance-Specific Both Contexts'>
+      <div class='slide-inner'>
+        
+    <h1>Tier B · strong C2 + C3, absent C1 (FLT3-ITD axis)</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>C2 / C3 rank</th><th>Score</th><th>CRISPR</th><th>Headline</th></tr></thead>
+      <tbody>
+        <tr><td>MLYCD</td><td>4 / 10</td><td>0.676 / 0.448</td><td>NE</td><td>Fatty-acid oxidation gateway · CI artefact in C2 (12.87)</td></tr>
+        <tr><td>GANAB</td><td>9 / 27</td><td>0.558 / —</td><td>NE</td><td>N-glycosylation QC · castanospermine probe · FLT3 receptor biology</td></tr>
+        <tr><td>MAST2</td><td>12 / 39</td><td>0.514 / —</td><td>NE</td><td>Ser/Thr kinase · FLT3-ITD-specific in both contrasts</td></tr>
+        <tr><td>IKZF1</td><td>28 / 19</td><td>0.400 / 0.390</td><td>NE</td><td>IKAROS TF · CCT8+IKZF1 synergy 3.237 (HIGHEST)</td></tr>
+      </tbody>
+    </table>
+    <p class='note'>Validate <b>in resistant lines first</b>. These targets emerge specifically in FLT3-ITD biology — both pre-resistance and resistant — and are absent from the broad A.M.L.-vs-Normal contrast.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>15 / 44</span>
+        <span class='ttl'>Tier B · Resistance-Specific Both Contexts</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='16' aria-label='Tier B Deep Dive · MLYCD · GANAB · MAST2 · IKZF1'>
+      <div class='slide-inner'>
+        
+    <h1>Tier B mechanistic profiles</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>MLYCD · fatty-acid oxidation gateway</h3>
+        <p>Malonyl-CoA decarboxylase — gates entry of fatty acids into mitochondrial β-oxidation.</p>
+        <p>Primary CI 12.87 looks dominant but perturbation effect is only −0.063 → likely hub-isolation artefact.</p>
+        <p><b>Demote from top-priority despite centrality dominance.</b></p>
+      </div>
+      <div class='card'>
+        <h3>GANAB · glucosidase II α subunit</h3>
+        <p>ER quality control of N-linked glycoproteins. Predicted to reduce FLT3-ITD receptor maturation.</p>
+        <p>Castanospermine = clean small-molecule probe (broad-spectrum but well-characterised).</p>
+        <p>Combination with gilteritinib should be supra-additive if FLT3 surface expression drops more in resistant cells.</p>
+      </div>
+      <div class='card'>
+        <h3>MAST2 · microtubule-associated kinase</h3>
+        <p>Serine/threonine kinase. FLT3-ITD-specific differential effect in both C2 and C3.</p>
+        <p>Lower confidence than MLYCD/GANAB — exploratory Tier B target.</p>
+      </div>
+      <div class='card'>
+        <h3>IKZF1 · IKAROS transcription factor</h3>
+        <p>FDA-approved degraders already exist (lenalidomide, pomalidomide, iberdomide).</p>
+        <p>CCT8 + IKZF1 synergy 3.237 — chaperonin destabilisation × CRBN-mediated proteasomal degradation = two non-redundant pathways onto same target.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>16 / 44</span>
+        <span class='ttl'>Tier B Deep Dive · MLYCD · GANAB · MAST2 · IKZF1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='17' aria-label='Tier C · Pre-Resistance Sensitisers'>
+      <div class='slide-inner'>
+        
+    <h1>Tier C · strong C2 only · pre-resistance sensitisers</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>C2 rank</th><th>Score</th><th>CRISPR</th><th>Headline</th></tr></thead>
+      <tbody>
+        <tr><td><b>WDR4</b></td><td>1</td><td><b>0.916</b></td><td>NE</td><td>HIGHEST score in entire study · tRNA m7G modification · Priority #1 parental</td></tr>
+        <tr><td>CMKLR1</td><td>10</td><td>0.539</td><td>NE</td><td>FLT3-differential dependency switch · GPCR · RUVBL2+CMKLR1 combination</td></tr>
+        <tr><td>ZCCHC4</td><td>6</td><td>0.640</td><td>NE</td><td>rRNA m6A · top direct disease driver C2 (conf 0.853) · FLT3-specific</td></tr>
+        <tr><td>HEMK1</td><td>5</td><td>0.641</td><td>NE</td><td>Translation termination · strong C2 · weak C3 (rank 117)</td></tr>
+      </tbody>
+    </table>
+    <div class='callout'>
+      <b>Hypothesis:</b> targeting these in <b>parental FLT3-ITD lines</b> may delay or prevent resistance acquisition.
+      Validation = MV4-11 + MOLM-13 parental, gilteritinib challenge, time-to-resistance kinetics.
+    </div>
+    
+      
+        <div class="chart" id="chart-17"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>17 / 44</span>
+        <span class='ttl'>Tier C · Pre-Resistance Sensitisers</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='18' aria-label='WDR4 · The Hero Slide'>
+      <div class='slide-inner'>
+        
+    <h1>WDR4 — score 0.916 · the highest in the entire study</h1>
+    <div class='grid two'>
+      <div class='card hi'>
+        <h3>What the score means</h3>
+        <p>0.916 = largest combined disease effect adjusted for resistance escape risk and compensation risk in the FLT3-ITD-specific causal network.</p>
+        <ul>
+          <li>35% from disease effect (−0.250 beneficial direction)</li>
+          <li>20% from causal importance</li>
+          <li>25% from low resistance escape risk (bypass 0.00)</li>
+          <li>20% from low compensation risk</li>
+        </ul>
+      </div>
+      <div class='card hi'>
+        <h3>Why WDR4 wins over RUVBL2 effect-magnitude leader</h3>
+        <ul>
+          <li>NON_ESSENTIAL by DepMap (low systemic toxicity)</li>
+          <li>MR-immune (genetic-instrument-supported)</li>
+          <li>Bypass fraction 0.00 (no resistance escape paths)</li>
+          <li>100% patient responder fraction (consistent across cluster)</li>
+        </ul>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>The clean target.</b> Mechanism: tRNA m7G46 modification → codon-biased elongation block → complementary to OTS167 cap-dependent initiation block.
+      <br><b>Combination experiment:</b> OTS167 + WDR4-AID2-degron in MV4-11 and MOLM-13.
+    </div>
+    
+      
+        <div class="chart" id="chart-18"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>18 / 44</span>
+        <span class='ttl'>WDR4 · The Hero Slide</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='19' aria-label='Tier C · CMKLR1 · ZCCHC4 · HEMK1'>
+      <div class='slide-inner'>
+        
+    <h1>The three other Tier C targets</h1>
+    <div class='grid three'>
+      <div class='card'>
+        <h3>CMKLR1</h3>
+        <p class='kv'>Class · chemerin GPCR (Gαi-coupled)</p>
+        <p class='kv'>Differential effect · −0.256 (largest in study)</p>
+        <p>Protective in FLT3− (+0.182) but beneficial in FLT3+ (−0.074) — true dependency switch.</p>
+        <p><b>NON_ESSENTIAL</b> · siRNA wet-lab safe.</p>
+        <p>Combination: RUVBL2 + CMKLR1 = best pre-resistance pair (−1.593).</p>
+      </div>
+      <div class='card'>
+        <h3>ZCCHC4</h3>
+        <p class='kv'>Class · 28S rRNA m6A methyltransferase</p>
+        <p class='kv'>Direct disease-driver edge conf 0.853 (top in C2)</p>
+        <p>Modulates ribosome biogenesis. Disproportionately important when blasts run high translation rates.</p>
+        <p>Three published cancer papers · zero AML-specific.</p>
+      </div>
+      <div class='card'>
+        <h3>HEMK1</h3>
+        <p class='kv'>Class · eRF1-Q185 methyltransferase</p>
+        <p class='kv'>Effect <b>FLIPS sign</b> C2→C3 (−0.162 → +0.012)</p>
+        <p>Translation termination · regulates stop-codon readthrough fidelity.</p>
+        <p><b>Validate in PARENTAL only</b> — dependency LOST in resistant state.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>19 / 44</span>
+        <span class='ttl'>Tier C · CMKLR1 · ZCCHC4 · HEMK1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='20' aria-label='Tier D · Acquired Resistance'>
+      <div class='slide-inner'>
+        
+    <h1>Tier D · strong C3 only · acquired resistance</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>C3 rank</th><th>Score</th><th>CRISPR</th><th>Headline</th></tr></thead>
+      <tbody>
+        <tr><td><b>POLR2C</b></td><td>1</td><td>0.747</td><td>PE</td><td>TOP resistance target · 100% responder both clusters · CDK7/9 proxy</td></tr>
+        <tr><td>DPAGT1</td><td>2</td><td>0.713</td><td>PE</td><td>N-glycosylation · Priority #4 resistant · tunicamycin probe</td></tr>
+        <tr><td><b>LINC00494</b></td><td>4</td><td>0.638 · effect <b>−1.655</b></td><td>NS</td><td>Largest C3 effect · lncRNA · CONFIRM EXPRESSION FIRST</td></tr>
+        <tr><td>RRM2</td><td>5</td><td>0.621</td><td>PE</td><td>DNA repair quiescent resistant · POLR2C+RRM2 (−2.191)</td></tr>
+        <tr><td>SH3BP2</td><td>8</td><td>0.476</td><td>NE</td><td>Best NON_ESSENTIAL resistance-enriched · Priority #2 resistant</td></tr>
+        <tr><td>GINS1</td><td>12</td><td>0.440 · bypass 1.0</td><td>PE</td><td>DNA replication · combination only</td></tr>
+      </tbody>
+    </table>
+    <div class='callout'>
+      <b>Validate in resistant lines</b> — gilteritinib-, quizartinib-, midostaurin-resistant MV4-11 / MOLM-13. The post-FLT3i + post-venetoclax R/R AML population (median OS 5.7 months) is where current SOC has nothing to offer.
+    </div>
+    
+      
+        <div class="chart" id="chart-20"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>20 / 44</span>
+        <span class='ttl'>Tier D · Acquired Resistance</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='21' aria-label='Tier D Deep Dive · POLR2C · DPAGT1'>
+      <div class='slide-inner'>
+        
+    <h1>Two Tier D pillars</h1>
+    <div class='grid two'>
+      <div class='card hi'>
+        <h3>POLR2C · acquired-resistance #1</h3>
+        <p class='kv'>RNA Pol II subunit C — core transcription</p>
+        <p>100% responder fraction in BOTH resistant clusters.</p>
+        <p>Translation: NOT direct POLR2C inhibition — predicts resistant cells have rewired transcription to depend on a specific Pol II pausing/elongation pattern.</p>
+        <ul>
+          <li>CDK7 covalent inhibitor THZ1 (Phase I AML)</li>
+          <li>CDK9 inhibitors dinaciclib · flavopiridol · alvocidib</li>
+          <li>Combination: dinaciclib + venetoclax in post-FLT3i R/R FLT3-mut AML</li>
+        </ul>
+      </div>
+      <div class='card hi'>
+        <h3>DPAGT1 · acquired-resistance #2</h3>
+        <p class='kv'>UDP-N-acetylglucosamine-dolichyl-phosphate transferase</p>
+        <p>First committed step of N-linked glycoprotein synthesis.</p>
+        <p>Resistant cells have UPREGULATED N-glycosylation flux — more dependent on DPAGT1 than parental cells.</p>
+        <ul>
+          <li>Tunicamycin probe (research only)</li>
+          <li>Selective DPAGT1 inhibitor lead-opt: 7 PDB structures available (CHEMBL4739704)</li>
+          <li>Combination with castanospermine (GANAB) — N-glycosylation at two steps</li>
+        </ul>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>21 / 44</span>
+        <span class='ttl'>Tier D Deep Dive · POLR2C · DPAGT1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='22' aria-label='Tier D · LINC00494 · RRM2 · SH3BP2 · GINS1'>
+      <div class='slide-inner'>
+        
+    <h1>Four more Tier D targets</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>LINC00494 · the largest single effect</h3>
+        <p>Effect −1.655 (largest C3 single-target). Uncharacterised lncRNA. NO DepMap data.</p>
+        <p><b>Mandatory expression-confirmation step</b> — RT-qPCR in 3 resistant lines vs parental.</p>
+        <p>If detectable in ≥2 of 3 resistant lines → proceed. If undetectable → exit at ~$5K, 4 weeks.</p>
+      </div>
+      <div class='card'>
+        <h3>RRM2 · DNA repair in quiescent resistant cells</h3>
+        <p>Ribonucleotide reductase. Provides dNTPs for DNA repair.</p>
+        <p>POLR2C + RRM2 combination = additive −2.191. Transcription block + DNA repair block in quiescent resistant cells.</p>
+        <p>Hydroxyurea + CDK9 inhibitor proxy.</p>
+      </div>
+      <div class='card'>
+        <h3>SH3BP2 · best NON_ESSENTIAL resistance target</h3>
+        <p>Cherubism adaptor. 3× resistance-differential effect. Scaffolds c-Abl/Src/Syk myeloid signalling.</p>
+        <p>Drug-development indirect: dasatinib (c-Abl) · saracatinib (Src) · entospletinib (Syk).</p>
+        <p>Priority #2 resistant lines.</p>
+      </div>
+      <div class='card'>
+        <h3>GINS1 · DNA replication</h3>
+        <p>Bypass fraction 1.0 → combination only.</p>
+        <p>Useful in combination with cytarabine for replication-stress synergy.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>22 / 44</span>
+        <span class='ttl'>Tier D · LINC00494 · RRM2 · SH3BP2 · GINS1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='23' aria-label='LINC00494 · Largest Single Effect, Strictest Gate'>
+      <div class='slide-inner'>
+        
+    <h1>LINC00494 · −1.655 · the highest-risk highest-novelty finding</h1>
+    <div class='grid two'>
+      <div class='card hi'>
+        <h3>What the data says</h3>
+        <ul>
+          <li>Secondary Phase 4A · rank 4 · integrated score 0.6385</li>
+          <li>Largest population disease effect in Secondary: <b>−1.6547</b></li>
+          <li>Phase 4B · rank 43 · lower-bound 0.4077 · responder 0.9783 · robustness 0.185</li>
+          <li>NOT_SCREENED in CRISPR layer</li>
+          <li>Zero PubMed papers in cancer or leukaemia</li>
+        </ul>
+      </div>
+      <div class='card hi'>
+        <h3>Mandatory pre-commitment gate</h3>
+        <ol>
+          <li>RT-qPCR in MV4-11-R, MOLM-13-R, MOLM-14-R (gilteritinib- / quizartinib- / midostaurin-resistant) vs parental controls</li>
+          <li>If detectable in ≥2 of 3 R-lines, NOT in parental → <span class='good'>PROCEED to functional work</span></li>
+          <li>If undetectable in all 3 R-lines → <span class='bad'>PIPELINE ARTEFACT confirmed · EXIT (~$5K · 4 weeks)</span></li>
+          <li>If detectable but expressed equally in R + parental → likely artefact · drop from C3 priority</li>
+        </ol>
+      </div>
+    </div>
+    <p class='note'>The "too large to be true" concern is real (1.5× the next-largest C3 effect) — but lncRNAs CAN have outsized network effects in transcriptomic regulation.</p>
+    
+      
+        <div class="chart" id="chart-23"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>23 / 44</span>
+        <span class='ttl'>LINC00494 · Largest Single Effect, Strictest Gate</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='24' aria-label='CMKLR1 · The Dependency Switch'>
+      <div class='slide-inner'>
+        
+    <h1>CMKLR1 · the FLT3-ITD dependency switch</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>The phenomenon</h3>
+        <p>Effect <b>flips direction</b> by FLT3 status:</p>
+        <ul>
+          <li>FLT3- patients: <b>+0.182</b> protective</li>
+          <li>FLT3+ patients: <b>−0.074</b> beneficial</li>
+          <li>Differential effect: <b>−0.256</b> (largest in study)</li>
+        </ul>
+      </div>
+      <div class='card'>
+        <h3>The mechanism</h3>
+        <p>CMKLR1 is the chemerin GPCR — Gαi-coupled, reduces cAMP, activates ERK.</p>
+        <p>In FLT3-: CMKLR1 signalling is adaptive (cell uses chemerin/ERK signalling).</p>
+        <p>In FLT3-ITD: STAT5/MAPK is saturated → CMKLR1 becomes a dependency, not an escape route.</p>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>Wet-lab confirmation:</b> CMKLR1 siRNA in MV4-11 (FLT3-ITD+) vs OCI-AML3 (FLT3-ITD−). Selective killing of FLT3-ITD+ confirms the switch.
+      <b>NON_ESSENTIAL</b> → siRNA is wet-lab safe.
+    </div>
+    
+      
+        <div class="chart" id="chart-24"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>24 / 44</span>
+        <span class='ttl'>CMKLR1 · The Dependency Switch</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='25' aria-label='METTL7A · NPM1-Cluster Stratification'>
+      <div class='slide-inner'>
+        
+    <h1>METTL7A · 4.6× NPM1-cluster specificity</h1>
+    <div class='grid two'>
+      <div class='card hi'>
+        <h3>The signal</h3>
+        <p>Cluster effect: <b>−0.947</b></p>
+        <p>Population effect: <b>−0.205</b></p>
+        <p>Subgroup specificity: <b>4.6×</b> — strongest in entire study</p>
+        <p>100% responder fraction within the NPM1-mutated cluster.</p>
+      </div>
+      <div class='card'>
+        <h3>The caveat</h3>
+        <p>n=39 NPM1-mutated patients in C2 cluster.</p>
+        <p>Lower-bound integrated score is bootstrap-stable at 80% retention.</p>
+        <p>Hypothesis-generating signal — not a confirmed precision-oncology result.</p>
+        <p>Expected probability of validation: <b>60–70%</b> with wide CI.</p>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>Wet-lab plan:</b> METTL7A siRNA in <b>OCI-AML3 (NPM1-mut) only</b>, with MV4-11 (NPM1-WT) as explicit negative subgroup control.
+      Selective killing of OCI-AML3 vs MV4-11 confirms the BiRAGAS NPM1-stratification prediction.
+    </div>
+    
+      
+        <div class="chart" id="chart-25"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>25 / 44</span>
+        <span class='ttl'>METTL7A · NPM1-Cluster Stratification</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='26' aria-label='Discovery T2 · PSMA1 · ENO1 · EBPL · FCN1 · ITPR2 · HTR7'>
+      <div class='slide-inner'>
+        
+    <h1>Six Discovery-context novel targets</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>C1 rank</th><th>Score</th><th>CRISPR</th><th>Headline</th></tr></thead>
+      <tbody>
+        <tr><td>PSMA1</td><td>4</td><td>0.637</td><td>PE</td><td>20S proteasome · RUVBL2+PSMA1 = −1.765 (largest Disc combo)</td></tr>
+        <tr><td>ENO1</td><td>5</td><td>0.632</td><td>PE</td><td>Glycolysis enolase · highest robustness 0.924</td></tr>
+        <tr><td>EBPL</td><td>8/39</td><td>0.571 / 0.311</td><td>NE</td><td>Sterol metabolism · cross-context Disc+Primary · NON_ESSENTIAL · highly novel</td></tr>
+        <tr><td>FCN1</td><td>9/24</td><td>0.571 / 0.414</td><td>NE</td><td>Innate immune ficolin pattern recognition · novel A.M.L. causal role</td></tr>
+        <tr><td>ITPR2</td><td>6</td><td>0.580</td><td>NE</td><td>ER calcium channel · novel A.M.L. driver · NON_ESSENTIAL</td></tr>
+        <tr><td>HTR7</td><td>—</td><td>—</td><td>NE</td><td>Serotonin receptor · GPCR druggability advantage · zero PubMed</td></tr>
+      </tbody>
+    </table>
+    <p class='note'>Cheap-screen approach: order siRNA pools for EBPL, FCN1, ITPR2, HTR7 (~$1,200), viability + apoptosis in MV4-11 + OCI-AML3 + THP-1 over 4 weeks. Whichever shows strongest selective effect proceeds.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>26 / 44</span>
+        <span class='ttl'>Discovery T2 · PSMA1 · ENO1 · EBPL · FCN1 · ITPR2 · HTR7</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='27' aria-label='PubMed Novelty · Tier α Breakdown'>
+      <div class='slide-inner'>
+        
+    <h1>PubMed novelty validation · 2026-04-29 · MCP queries</h1>
+    <p class='lead'><b>9 of 10</b> newly-surfaced targets have <b>zero PubMed papers</b> in their proposed AML context.</p>
+    <table class='tbl small'>
+      <thead><tr><th>Gene</th><th>Query</th><th>Hit count</th><th>Tier</th></tr></thead>
+      <tbody>
+        <tr><td>WDR4</td><td>WDR4 + m7G + tRNA + leukaemia</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>CMKLR1</td><td>CMKLR1 + chemerin receptor + leukaemia + AML</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>GANAB</td><td>GANAB + glucosidase II + AML + FLT3</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>METTL7A</td><td>METTL7A + methyltransferase + NPM1 + AML</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>LINC00494</td><td>LINC00494 + cancer + leukaemia</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>SH3BP2</td><td>SH3BP2 + cherubism + leukaemia + AML resistance</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>EBPL</td><td>EBPL + emopamil-binding protein + cancer + leukaemia</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>RRM2</td><td>RRM2 + ribonucleotide reductase + FLT3i resistance</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>CCT8</td><td>CCT8 + chaperonin + TRiC + leukaemia + AML</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>MRPS16</td><td>MRPS16 + mitoribosome + AML + venetoclax</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>HTR7</td><td>HTR7 + serotonin receptor + AML</td><td>0 papers</td><td>α</td></tr>
+        <tr><td>FCN1</td><td>FCN1 + ficolin + AML + leukaemia</td><td>0 papers (causal context)</td><td>α</td></tr>
+      </tbody>
+    </table>
+    
+      
+        <div class="chart" id="chart-27"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>27 / 44</span>
+        <span class='ttl'>PubMed Novelty · Tier α Breakdown</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='28' aria-label='PubMed · Tier β/γ Targets'>
+      <div class='slide-inner'>
+        
+    <h1>Known biology · novel A.M.L. positioning</h1>
+    <table class='tbl'>
+      <thead><tr><th>Gene</th><th>PubMed status</th><th>Tier</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>ITPR2</td><td>2 papers (background)</td><td>β</td><td>Known calcium channel biology · novel A.M.L. positioning</td></tr>
+        <tr><td>GINS1</td><td>limited (DNA replication general)</td><td>β</td><td>Known DNA replication · novel A.M.L. resistance</td></tr>
+        <tr><td>NUDT1 / MTH1</td><td>many in cancer · 0 in FLT3-ITD AML</td><td>β</td><td>Known cancer target · novel FLT3-ITD positioning</td></tr>
+        <tr><td>IKZF1</td><td>many (lenalidomide approved)</td><td>γ</td><td>Known target · novel resistance combination (CCT8+IKZF1)</td></tr>
+        <tr><td>ZCCHC4</td><td>3 papers (general)</td><td>β</td><td>Known biochemistry (Ma et al. Nat Chem Biol 2019) · novel A.M.L. positioning</td></tr>
+      </tbody>
+    </table>
+    <p class='note'>The Tier β/γ set is where the BiRAGAS pipeline adds <b>combination novelty and context novelty</b> rather than target-discovery novelty. Often more clinically translatable because chemistry exists.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>28 / 44</span>
+        <span class='ttl'>PubMed · Tier β/γ Targets</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='29' aria-label='Combination Hypotheses · Overview'>
+      <div class='slide-inner'>
+        
+    <h1>Twelve combination hypotheses · highest synergy 3.237</h1>
+    <table class='tbl small'>
+      <thead><tr><th>#</th><th>Combination</th><th>Context</th><th>Combined effect</th><th>Synergy</th><th>Strategy</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><b>CCT8 + IKZF1</b></td><td>C1+C3 / C2+C3</td><td>—</td><td><b>3.237 ★ HIGHEST</b></td><td>Chaperonin + IKAROS · resistant lines</td></tr>
+        <tr><td>2</td><td>RUVBL2 + POLR2C (CDK9i)</td><td>All3 / C3</td><td>−2.191</td><td>Additive</td><td>Pan-context + acquired resistance</td></tr>
+        <tr><td>3</td><td>POLR2C + RRM2 (CDK9i + HU)</td><td>C3 / C3</td><td>−2.191</td><td>Additive</td><td>Transcription + DNA repair (quiescent resistant)</td></tr>
+        <tr><td>4</td><td>LINC00494 + POLR2C</td><td>C3 / C3</td><td><b>−2.888</b></td><td>0.951</td><td>Recommended Secondary IF expression confirmed</td></tr>
+        <tr><td>5</td><td>RUVBL2 + PSMA1</td><td>C1 / C1</td><td>−1.765</td><td>1.000</td><td>Largest Discovery · AAA+ ATPase + 20S proteasome</td></tr>
+        <tr><td>6</td><td>RUVBL2 + CMKLR1</td><td>C1+C2 / C2</td><td>−1.593</td><td>1.000</td><td>Best pre-resistance · NON_ESSENTIAL CMKLR1</td></tr>
+        <tr><td>7</td><td>MRPS16 + DPAGT1</td><td>All3 / C3</td><td>~−1.37 est.</td><td>1.838</td><td>Mitoribosome + N-glycosylation</td></tr>
+        <tr><td>8</td><td>GABARAPL1 + NBR1</td><td>All3 (centrality)</td><td>−1.39</td><td>1.39</td><td>Pan-A.M.L. autophagy axis</td></tr>
+        <tr><td>9</td><td>OTS167 + WDR4</td><td>Cross-program</td><td>Predicted supra-additive</td><td>—</td><td>Cap-dependent initiation × codon-biased elongation</td></tr>
+        <tr><td>10</td><td>WDR4 + GANAB</td><td>C2 / C2</td><td>Predicted additive</td><td>—</td><td>Glycoprotein QC + tRNA modification</td></tr>
+        <tr><td>11</td><td>WDR4 + EPC2 ⚠</td><td>C2 / C2</td><td>−0.061</td><td><b>9.004 ⚠</b></td><td>Caution · opposite-direction cancellation artefact</td></tr>
+        <tr><td>12</td><td>CCT8 + RUVBL2</td><td>C1 / C1</td><td>−1.717</td><td>1.000</td><td>Both chaperone-pathway adjacent</td></tr>
+      </tbody>
+    </table>
+    
+      
+        <div class="chart" id="chart-29"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>29 / 44</span>
+        <span class='ttl'>Combination Hypotheses · Overview</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='30' aria-label='CCT8 + IKZF1 · Synergy 3.237 Hero'>
+      <div class='slide-inner'>
+        
+    <h1>CCT8 + IKZF1 · the highest synergy in the dataset</h1>
+    <div class='grid two'>
+      <div class='card hi'>
+        <h3>Mechanism</h3>
+        <p>CCT/TRiC chaperonin folds nascent transcription factors including IKAROS.</p>
+        <p>IKAROS is also degraded via CRBN/cereblon by lenalidomide-class IMiDs.</p>
+        <p><b>Two non-redundant pathways onto the same target</b> = supra-additive prediction.</p>
+        <ul>
+          <li>CCT8 inhibition / siRNA → IKAROS misfolding → degradation</li>
+          <li>Lenalidomide → CRBN-mediated proteasomal IKAROS degradation</li>
+          <li>Combined → near-complete IKAROS depletion in resistant blasts</li>
+        </ul>
+      </div>
+      <div class='card hi'>
+        <h3>Wet-lab validation path</h3>
+        <ol>
+          <li>MV4-11 + gilteritinib-resistant lines</li>
+          <li>Lenalidomide (FDA-approved) at clinical dose</li>
+          <li>CCT8 siRNA at IC30</li>
+          <li>Read out viability + apoptosis + IKAROS Western blot</li>
+          <li>Synergy score by Bliss / Loewe / HSA</li>
+        </ol>
+        <p class='note'>If supra-additive killing → publish to Cell or Nature Cancer with mechanism plus combination.</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>30 / 44</span>
+        <span class='ttl'>CCT8 + IKZF1 · Synergy 3.237 Hero</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='31' aria-label='OTS167 + WDR4 · The Alachkar Lab Integration'>
+      <div class='slide-inner'>
+        
+    <h1>OTS167 + WDR4 · cap-dependent × codon-biased translation block</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>The two mechanisms</h3>
+        <p><b>OTS167</b> · MELK inhibitor (Alachkar lab validated) · cap-dependent initiation</p>
+        <p><b>WDR4</b> · tRNA m7G46 methyltransferase · codon-biased elongation</p>
+        <p>Two independent translation-control nodes → predicted supra-additive selectivity.</p>
+      </div>
+      <div class='card'>
+        <h3>Two-arm protocol</h3>
+        <p><b>Arm 1 · acute viability (3 mo)</b></p>
+        <p>OTS167 + WDR4-AID2-degron in MV4-11 + MOLM-13 at IC50. Read viability, apoptosis, puromycin incorporation.</p>
+        <p><b>Arm 2 · resistance prevention (12 mo)</b></p>
+        <p>Chronic gilteritinib + (vehicle vs OTS167 vs WDR4-active vs both). Track time-to-resistance kinetics.</p>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>18-month milestone:</b> Cell or Nature Cancer manuscript demonstrating both acute synergy AND resistance delay — the strongest possible publication package.
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>31 / 44</span>
+        <span class='ttl'>OTS167 + WDR4 · The Alachkar Lab Integration</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='32' aria-label='WDR4 + EPC2 · Synergy Index 9.004 ⚠ Caution'>
+      <div class='slide-inner'>
+        
+    <h1>The synergy artefact pattern</h1>
+    <div class='grid two'>
+      <div class='card warn'>
+        <h3>What the model says</h3>
+        <p>WDR4 + EPC2 synergy index <b>9.004</b> — far higher than CCT8 + IKZF1 at 3.237.</p>
+        <p>Why isn't this the top combination?</p>
+      </div>
+      <div class='card warn'>
+        <h3>What's really happening</h3>
+        <p>WDR4 effect: <b>−0.250</b> (beneficial)</p>
+        <p>EPC2 effect: <b>+0.243</b> (harmful · protective node)</p>
+        <p>Combined effect: <b>−0.061</b> ≈ near zero</p>
+        <p>Synergy index = <em>ratio</em>, not <em>magnitude</em> → opposite-direction cancellation produces inflated synergy without real combination benefit.</p>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>User-facing rule:</b> only trust synergy index when the underlying combined effect is large in absolute magnitude. CCT8 + IKZF1 has both high synergy AND large combined effect. WDR4 + EPC2 is a model-flagged mathematical interaction, not a lead combination.
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>32 / 44</span>
+        <span class='ttl'>WDR4 + EPC2 · Synergy Index 9.004 ⚠ Caution</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='33' aria-label='Wet-Lab Plan · Resistant Lines · Tier D'>
+      <div class='slide-inner'>
+        
+    <h1>Resistant-line wet-lab priority order</h1>
+    <table class='tbl'>
+      <thead><tr><th>#</th><th>Target</th><th>Tier</th><th>Cell line</th><th>Approach</th><th>Readout</th></tr></thead>
+      <tbody>
+        <tr><td>R1</td><td><b>POLR2C → CDK9i</b></td><td>D</td><td>MV4-11-R + MOLM-13-R</td><td>Dinaciclib · flavopiridol</td><td>Viability · apoptosis · FLT3i re-sensitisation</td></tr>
+        <tr><td>R2</td><td><b>SH3BP2</b></td><td>D</td><td>All three resistant lines</td><td>siRNA (NON_ESSENTIAL)</td><td>Viability · clonogenic</td></tr>
+        <tr><td>R3</td><td>RUVBL2</td><td>A · resistant comparison</td><td>All resistant + parental</td><td>Activation strategy / agonist</td><td>Compare R vs parental</td></tr>
+        <tr><td>R4</td><td>DPAGT1 → tunicamycin</td><td>D</td><td>MV4-11-R preferred</td><td>Tunicamycin or DPAGT1 siRNA</td><td>FLT3 surface · viability</td></tr>
+        <tr><td>R5</td><td>MRPS16</td><td>A</td><td>All resistant + xenograft</td><td>Tedizolid (mitoribosome inhibitor)</td><td>Mitochondrial respiration · viability</td></tr>
+        <tr><td>R6</td><td>GANAB → castanospermine</td><td>B</td><td>MV4-11-R preferred</td><td>Castanospermine</td><td>FLT3 surface · viability</td></tr>
+        <tr><td>R7*</td><td>LINC00494</td><td>D</td><td>Resistant lines</td><td><b>RT-qPCR before any commitment</b></td><td>Expression first · viability if confirmed</td></tr>
+      </tbody>
+    </table>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>33 / 44</span>
+        <span class='ttl'>Wet-Lab Plan · Resistant Lines · Tier D</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='34' aria-label='Wet-Lab Plan · Parental Lines · Tier C'>
+      <div class='slide-inner'>
+        
+    <h1>Parental-line wet-lab priority order</h1>
+    <table class='tbl'>
+      <thead><tr><th>#</th><th>Target</th><th>Tier</th><th>Cell line</th><th>Approach</th><th>Readout</th></tr></thead>
+      <tbody>
+        <tr><td>P1</td><td><b>WDR4 (score 0.916)</b></td><td>C</td><td>MV4-11 · MOLM-13 parental</td><td>AID2 degron · activation</td><td>Time-to-resistance in repeat gilteritinib challenge</td></tr>
+        <tr><td>P2</td><td>CMKLR1</td><td>C</td><td>MV4-11 · MOLM-13 parental</td><td>siRNA (NON_ESSENTIAL)</td><td>Resistance kinetics · FLT3+ dependency switch</td></tr>
+        <tr><td>P3</td><td>MLYCD</td><td>B</td><td>All FLT3-ITD parental + resistant</td><td>MLYCD inhibitor + FLT3i combination</td><td>Combination dose-response</td></tr>
+        <tr><td>P4</td><td>GANAB → castanospermine</td><td>B</td><td>MV4-11 · MOLM-13</td><td>Castanospermine + gilteritinib</td><td>FLT3 surface · combination viability</td></tr>
+        <tr><td>P5</td><td>METTL7A (NPM1+ only)</td><td>T3 special</td><td>OCI-AML3 NPM1-mut only</td><td>siRNA viability</td><td>Subgroup-specific viability</td></tr>
+        <tr><td>P6</td><td>GABARAPL1 + NBR1</td><td>A · cross-context</td><td>All FLT3-ITD lines</td><td>Dual KO + LC3-II flux assay</td><td>Combined disease activity reduction</td></tr>
+        <tr><td>P7</td><td><b>OTS167 + WDR4</b></td><td>cross-program</td><td>MV4-11 · MOLM-13</td><td>Combination dose-response</td><td>Supra-additive selectivity readout</td></tr>
+      </tbody>
+    </table>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>34 / 44</span>
+        <span class='ttl'>Wet-Lab Plan · Parental Lines · Tier C</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='35' aria-label='Centrality Artefacts · MLYCD · PPP1R3E'>
+      <div class='slide-inner'>
+        
+    <h1>Two centrality-artefact flags</h1>
+    <div class='grid two'>
+      <div class='card warn'>
+        <h3>MLYCD · Primary CI 12.87</h3>
+        <p>Looks dominant in centrality but perturbation effect is only <b>−0.063</b>.</p>
+        <p>Signature of artefact: extreme CI outlier (3× next gene TRIM33 4.92) + low perturbation effect + low M.M. evidence.</p>
+        <p><b>Demote MLYCD from top-priority despite centrality dominance.</b></p>
+      </div>
+      <div class='card warn'>
+        <h3>PPP1R3E · Secondary CI 74.1</h3>
+        <p>6× the next gene (MLYCD 12.9). All three artefact filters hit.</p>
+        <p>Effect −0.129 · M.M. evidence 2.3 · perturbation rank only 9.</p>
+        <p><b>Treat as secondary target despite apparent dominance.</b></p>
+      </div>
+    </div>
+    <div class='callout'>
+      <b>Diagnostic for true regulators:</b> moderate CI + high downstream impact. WDR4 fits this pattern (CI 2.98, perturbation rank 1, effect −0.250). RUVBL2 (CI 3.79, effect −1.10), POLR2C (CI 2.9, effect −1.38), DPAGT1 (effect −0.93) all moderate-CI / high-impact.
+    </div>
+    
+      
+        <div class="chart" id="chart-35"></div>
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>35 / 44</span>
+        <span class='ttl'>Centrality Artefacts · MLYCD · PPP1R3E</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='36' aria-label='Caveats · Pipeline State 1'>
+      <div class='slide-inner'>
+        
+    <h1>Pipeline-state caveats · transparency first</h1>
+    <ul class='caveats'>
+      <li><b>CBF sensitivity analysis NOT YET RUN.</b> 47 CBF-A.M.L. samples in FLT3- reference (CBFB-MYH11 n=34, RUNX1-RUNX1T1 n=13) create subtype-composition artefacts. Edges involving RUNX1T1 / MYH11 / CBFB programs should be treated with caution. <em>One-week task · committed within 14 days.</em></li>
+      <li><b>TCGA-LAML replication PENDING.</b> No Aim 1 gene is formally cross-cohort Tier 1. RUVBL2 + MRPS16 are leading candidates based on cross-context consistency. <em>4–6 weeks compute + analysis.</em></li>
+      <li><b>DNMT3A / IDH1 / IDH2 / TET2 co-mutation conditioning REQUIRES JOIN.</b> Currently absent from DAG metadata — limits epigenetic co-mutation stratification. <em>2–3 weeks.</em></li>
+      <li><b>LINC00494 has NO DepMap data and no published characterisation.</b> Largest disease effect (−1.655) but mandatory expression-confirmation step before any wet-lab commitment.</li>
+      <li><b>METTL7A has NO DepMap CRISPR data (NOT_SCREENED).</b> NPM1-cluster specificity is a prediction with no external anchor other than network position.</li>
+    </ul>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>36 / 44</span>
+        <span class='ttl'>Caveats · Pipeline State 1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='37' aria-label='Caveats · Pipeline State 2'>
+      <div class='slide-inner'>
+        
+    <h1>Four more caveats</h1>
+    <ul class='caveats'>
+      <li><b>Secondary cohort n=46 is exploratory.</b> Despite the quality paradox, all Tier D targets need independent biological validation in resistant cell lines before clinical translation. Per-target effect-size confidence interval is wider than C1/C2 (FDR ≈ 0.08 at lb ≥ 0.85).</li>
+      <li><b>L1000 compound screening data NOT AVAILABLE</b> for any top-30 target across all contexts. Drug repurposing analysis pending.</li>
+      <li><b>96.9% of DAG edges are derived from Granger temporal evidence</b> in C1. Pipeline is heavily reliant on transcriptomic time-series for directionality. Edges should be interpreted as <b>inferred causal, not experimentally validated</b>. C3 drops to 81.2% Granger-derived.</li>
+      <li><b>Direction confirmation 18.0% in C2</b> means roughly 1 in 5 edges have temporal AND genetic/MR direction agreement. The other 82% rely on Granger temporal evidence alone for directionality.</li>
+    </ul>
+    <p class='note'>These are pipeline limitations, not scientific contradictions. They define the bounds within which version two findings hold.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>37 / 44</span>
+        <span class='ttl'>Caveats · Pipeline State 2</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='38' aria-label='Strategic Recommendation · Top Four Wet-Lab Arms'>
+      <div class='slide-inner'>
+        
+    <h1>The four highest-priority wet-lab arms</h1>
+    <div class='grid four'>
+      <div class='card hi'>
+        <h3>Arm 1 · WDR4 (P1)</h3>
+        <p class='kv'>Tier C · parental</p>
+        <p>Score 0.916 · highest in study</p>
+        <p>OTS167 + WDR4 cross-program combination</p>
+        <p>Time-to-resistance kinetics</p>
+      </div>
+      <div class='card hi'>
+        <h3>Arm 2 · POLR2C (R1)</h3>
+        <p class='kv'>Tier D · resistant</p>
+        <p>Acquired-resistance #1</p>
+        <p>CDK9i (dinaciclib) + venetoclax + gilteritinib triplet</p>
+        <p>R/R FLT3-mutated A.M.L. population</p>
+      </div>
+      <div class='card hi'>
+        <h3>Arm 3 · SH3BP2 (R2)</h3>
+        <p class='kv'>Tier D · resistant · NON_ESSENTIAL</p>
+        <p>Best NE resistance-enriched</p>
+        <p>siRNA + downstream c-Abl/Src/Syk panel</p>
+        <p>Pathway node + biomarker</p>
+      </div>
+      <div class='card hi'>
+        <h3>Arm 4 · GABARAPL1 + NBR1 (P6)</h3>
+        <p class='kv'>Tier A · cross-context</p>
+        <p>Pan-A.M.L. autophagy axis · NON_ESSENTIAL</p>
+        <p>Dual KO + LC3-II flux assay</p>
+        <p>Venetoclax combination</p>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>38 / 44</span>
+        <span class='ttl'>Strategic Recommendation · Top Four Wet-Lab Arms</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='39' aria-label='Conclusions · Headlines 1'>
+      <div class='slide-inner'>
+        
+    <h1>Updated bottom line · part 1</h1>
+    <ul class='concl'>
+      <li><b>WDR4 is the highest-scoring single target in the entire BiRAGAS study</b> (Primary score 0.916, NON_ESSENTIAL, MR-immune). It is the strongest pre-resistance sensitiser hypothesis in the dataset and the highest-priority parental wet-lab bet.</li>
+      <li><b>The formal Tier A/B/C/D framework reorganises priorities:</b> pan-A.M.L. targets (RUVBL2, MRPS16, CCT8, GABARAPL1) are Tier A — broad applicability but de-prioritised as resistance-specific; resistance-specific Tier B/C/D candidates are the post-FLT3i + post-venetoclax R/R A.M.L. population's best chance.</li>
+      <li><b>LINC00494, SH3BP2, RRM2, POLR2C, DPAGT1 form the Tier D acquired-resistance module.</b> POLR2C + RRM2 (additive −2.191) and SH3BP2 (NON_ESSENTIAL, 3× resistance-enriched) are the two most actionable single-target arms.</li>
+    </ul>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>39 / 44</span>
+        <span class='ttl'>Conclusions · Headlines 1</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='40' aria-label='Conclusions · Headlines 2'>
+      <div class='slide-inner'>
+        
+    <h1>Updated bottom line · part 2</h1>
+    <ul class='concl'>
+      <li><b>The CCT8 + IKZF1 synergy of 3.237</b> is the highest in the entire study and was absent from the prior novelty report. This is a category-defining combination hypothesis if validated — and it is clinically translatable today via lenalidomide.</li>
+      <li><b>The Secondary-context quality paradox</b> (smallest cohort, best causal evidence) means resistance-specific Tier D findings carry higher per-target causal confidence than Discovery or Primary at the same tier — a counterintuitive but important finding. The resistance transcriptome is a focused selected regulatory state.</li>
+      <li><b>Twelve of fourteen newly-surfaced v2 targets are Tier α</b> (fully novel — zero PubMed in proposed context). This is one of the most novelty-dense computationally-derived target sets for A.M.L. in recent literature.</li>
+      <li><b>Strategic recommendation:</b> prioritise WDR4 (parental Priority #1), POLR2C (resistant Priority #1), SH3BP2 (resistant Priority #2), and the GABARAPL1 + NBR1 cross-context combination (Tier A pan-A.M.L.) as the top four wet-lab arms.</li>
+    </ul>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>40 / 44</span>
+        <span class='ttl'>Conclusions · Headlines 2</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='41' aria-label='Action Timeline · 18-Month Roadmap'>
+      <div class='slide-inner'>
+        
+    <h1>18-month action timeline</h1>
+    <table class='tbl'>
+      <thead><tr><th>Month</th><th>Pipeline closure</th><th>Wet-lab milestone</th></tr></thead>
+      <tbody>
+        <tr><td>0–1</td><td>CBF sensitivity analysis · 14-day commitment</td><td>siRNA pools ordered (EBPL, FCN1, ITPR2, HTR7, CMKLR1, SH3BP2)</td></tr>
+        <tr><td>1–3</td><td>Co-mutation join (DNMT3A/IDH/TET2/NPM1)</td><td>WDR4 AID2-degron MV4-11 + MOLM-13 baseline · LINC00494 RT-qPCR gate</td></tr>
+        <tr><td>3–6</td><td>TCGA-LAML replication · L1000 compound layer</td><td>OTS167 + WDR4 acute viability · POLR2C CDK9i resistant-line viability · CCT8+IKZF1 lenalidomide combination</td></tr>
+        <tr><td>6–12</td><td>Refresh tier classifications · cross-cohort verification</td><td>Resistance-emergence kinetics WDR4 · SH3BP2 siRNA panel · DPAGT1 tunicamycin window</td></tr>
+        <tr><td>12–18</td><td>Cell or Nature Cancer manuscript (mechanism + combination)</td><td>Xenograft validation MRPS16 + WDR4 · clinical translation white paper</td></tr>
+      </tbody>
+    </table>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>41 / 44</span>
+        <span class='ttl'>Action Timeline · 18-Month Roadmap</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='42' aria-label='Risk Register · Top Five Failure Modes'>
+      <div class='slide-inner'>
+        
+    <h1>Top five failure modes · mitigation strategy</h1>
+    <table class='tbl'>
+      <thead><tr><th>Risk</th><th>Probability</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>LINC00494 undetectable in resistant lines</td><td>Moderate</td><td>RT-qPCR gate at $5K · 4 weeks · exit before commitment</td></tr>
+        <tr><td>WDR4 NON_ESSENTIAL ≠ non-toxic in vivo</td><td>Moderate-High</td><td>AID2 acute degradation · CD34+ healthy controls · METTL1 partner</td></tr>
+        <tr><td>POLR2C systemic toxicity (CDK9i clinical history failed)</td><td>High</td><td>Patient stratification: post-FLT3i + post-venetoclax R/R only · venetoclax backbone</td></tr>
+        <tr><td>METTL7A n=39 underpowered</td><td>Moderate</td><td>Restrict validation to OCI-AML3 only · negative-control MV4-11</td></tr>
+        <tr><td>CCT8 + IKZF1 synergy fails to validate</td><td>Low-Moderate</td><td>Mechanism is well-supported (CCT/TRiC folds IKAROS) · lenalidomide arm is FDA-approved</td></tr>
+      </tbody>
+    </table>
+    <p class='note'>Each failure mode has a specific kill-switch experiment that exits the program before expensive in-vivo or clinical commitment.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>42 / 44</span>
+        <span class='ttl'>Risk Register · Top Five Failure Modes</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='43' aria-label='Sources · Reports + PubMed via MCP'>
+      <div class='slide-inner'>
+        
+    <h1>Sources</h1>
+    <div class='grid two'>
+      <div class='card'>
+        <h3>BiRAGAS Reports v2 · 2026-04-29</h3>
+        <ul>
+          <li>BiRAGAS_Discovery_Report_v2.docx · C1 tier classification, top-50 perturbation, METTL7A NPM1 magnitude, EBPL/FCN1/ITPR2/HTR7</li>
+          <li>BiRAGAS_Primary_Context_Report.docx · C2 WDR4 #1 (0.916), CMKLR1, GANAB, MLYCD, HEMK1, ZCCHC4, FLT3-differential</li>
+          <li>BiRAGAS_Secondary_Report.docx · C3 POLR2C, DPAGT1, LINC00494, RRM2, SH3BP2, GINS1, quality paradox</li>
+          <li>BiRAGAS_CrossContext_Integration.docx · Tier A/B/C/D framework, cell-line ordering, master target table</li>
+        </ul>
+      </div>
+      <div class='card'>
+        <h3>PubMed via MCP · 2026-04-29</h3>
+        <ul>
+          <li>14 target-specific queries · 12 returned 0 papers (Tier α)</li>
+          <li>2 returned background papers (Tier β)</li>
+          <li>Methodology: novel-context queries — gene + mechanism + AML + clinical context</li>
+          <li>Reproducibility: all queries logged with hit count and verdict in workbook tab 4</li>
+        </ul>
+      </div>
+    </div>
+    <p class='note'>Companion document: AML_BiRAGAS_Updated_Novelty_Assessment_v2.docx · narrative form with full tables. Companion workbook: AML_BiRAGAS_Updated_Novelty_Assessment_v2.xlsx · 8 tabs.</p>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>43 / 44</span>
+        <span class='ttl'>Sources · Reports + PubMed via MCP</span>
+      </div>
+    </section>
+    
+    <section class='slide' data-idx='44' aria-label='Closing · Next Decision'>
+      <div class='slide-inner'>
+        
+    <div class='hero'>
+      <h1>The Next Decision</h1>
+      <h2>Approve four wet-lab arms</h2>
+      <div class='grid four small'>
+        <div class='card hi'><h3>WDR4</h3><p>Score 0.916 · parental P1 · OTS167 combination</p></div>
+        <div class='card hi'><h3>POLR2C</h3><p>Resistant R1 · CDK9i + venetoclax + gilteritinib triplet</p></div>
+        <div class='card hi'><h3>SH3BP2</h3><p>Resistant R2 · NON_ESSENTIAL · pathway node + biomarker</p></div>
+        <div class='card hi'><h3>GABARAPL1+NBR1</h3><p>Tier A cross-context · pan-A.M.L. autophagy axis</p></div>
+      </div>
+      <p class='subtitle'>Cell or Nature Cancer manuscript · mechanism + combination + resistance-delay</p>
+      <div class='meta'>
+        <div><span class='lbl'>Authoring</span><span class='val'>Ayass Bioscience LLC × Dr. Houda Alachkar Lab (USC)</span></div>
+        <div><span class='lbl'>Pipeline</span><span class='val'>BiRAGAS v2.0</span></div>
+        <div><span class='lbl'>Date</span><span class='val'>2026-04-29</span></div>
+      </div>
+    </div>
+    
+      </div>
+      <div class='slide-foot'>
+        <span class='page'>44 / 44</span>
+        <span class='ttl'>Closing · Next Decision</span>
+      </div>
+    </section>
+    
+  </main>
+
+  <nav class='nav'>
+    <button id='prevBtn' title='Previous (←)'>← Prev</button>
+    <button id='playBtn' class='play-btn' title='Play / Pause narration (Space)'>▶ Play</button>
+    <button id='nextBtn' title='Next (→)'>Next →</button>
+    <span class='progress' id='progress'>1 / 44</span>
+    <button id='autoBtn' title='Auto-advance with audio'>↻ Auto</button>
+  </nav>
+
+  <audio id='audio' preload='auto'></audio>
+
+  <script>
+    const AUDIO_FILES = [
+      "audio/slide_01.mp3",
+      "audio/slide_02.mp3",
+      "audio/slide_03.mp3",
+      "audio/slide_04.mp3",
+      "audio/slide_05.mp3",
+      "audio/slide_06.mp3",
+      "audio/slide_07.mp3",
+      "audio/slide_08.mp3",
+      "audio/slide_09.mp3",
+      "audio/slide_10.mp3",
+      "audio/slide_11.mp3",
+      "audio/slide_12.mp3",
+      "audio/slide_13.mp3",
+      "audio/slide_14.mp3",
+      "audio/slide_15.mp3",
+      "audio/slide_16.mp3",
+      "audio/slide_17.mp3",
+      "audio/slide_18.mp3",
+      "audio/slide_19.mp3",
+      "audio/slide_20.mp3",
+      "audio/slide_21.mp3",
+      "audio/slide_22.mp3",
+      "audio/slide_23.mp3",
+      "audio/slide_24.mp3",
+      "audio/slide_25.mp3",
+      "audio/slide_26.mp3",
+      "audio/slide_27.mp3",
+      "audio/slide_28.mp3",
+      "audio/slide_29.mp3",
+      "audio/slide_30.mp3",
+      "audio/slide_31.mp3",
+      "audio/slide_32.mp3",
+      "audio/slide_33.mp3",
+      "audio/slide_34.mp3",
+      "audio/slide_35.mp3",
+      "audio/slide_36.mp3",
+      "audio/slide_37.mp3",
+      "audio/slide_38.mp3",
+      "audio/slide_39.mp3",
+      "audio/slide_40.mp3",
+      "audio/slide_41.mp3",
+      "audio/slide_42.mp3",
+      "audio/slide_43.mp3",
+      "audio/slide_44.mp3"
+    ];
+    const TOTAL = AUDIO_FILES.length;
+    const slides = document.querySelectorAll('.slide');
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const autoBtn = document.getElementById('autoBtn');
+    const progress = document.getElementById('progress');
+    const audioBar = document.getElementById('audioBar');
+    const tocToggle = document.getElementById('tocToggle');
+    const toc = document.getElementById('toc');
+    let cur = 0; let autoAdvance = true; let isPlaying = false;
+
+    function show(i) {
+      cur = Math.max(0, Math.min(TOTAL - 1, i));
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === cur));
+      progress.textContent = `${cur + 1} / ${TOTAL}`;
+      audio.src = AUDIO_FILES[cur];
+      audioBar.style.width = '0%';
+      document.querySelectorAll('.toc a').forEach((a, idx) => a.classList.toggle('active', idx === cur));
+      if (isPlaying) audio.play().catch(()=>{});
+    }
+
+    function togglePlay() {
+      if (audio.paused) {
+        audio.play().then(() => { isPlaying = true; playBtn.textContent = '⏸ Pause'; }).catch(()=>{});
+      } else {
+        audio.pause(); isPlaying = false; playBtn.textContent = '▶ Play';
+      }
+    }
+
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) audioBar.style.width = (audio.currentTime / audio.duration * 100) + '%';
+    });
+    audio.addEventListener('ended', () => {
+      audioBar.style.width = '100%';
+      if (autoAdvance && cur < TOTAL - 1) setTimeout(() => show(cur + 1), 600);
+      else { isPlaying = false; playBtn.textContent = '▶ Play'; }
+    });
+
+    prevBtn.addEventListener('click', () => show(cur - 1));
+    nextBtn.addEventListener('click', () => show(cur + 1));
+    playBtn.addEventListener('click', togglePlay);
+    autoBtn.addEventListener('click', () => {
+      autoAdvance = !autoAdvance;
+      autoBtn.textContent = autoAdvance ? '↻ Auto' : '⊘ Manual';
+      autoBtn.style.opacity = autoAdvance ? '1' : '0.5';
+    });
+
+    tocToggle.addEventListener('click', () => {
+      const open = toc.classList.toggle('open');
+      tocToggle.setAttribute('aria-expanded', open);
+    });
+    document.querySelectorAll('.toc a').forEach((a, idx) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        show(idx);
+        toc.classList.remove('open');
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(cur + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur - 1); }
+      else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+      else if (e.key === 'Home') show(0);
+      else if (e.key === 'End') show(TOTAL - 1);
+      else if (e.key === 'Escape') toc.classList.remove('open');
+    });
+
+    show(0);
+  </script>
+
+<script>
+  const CHARTS = {"3": {"type": "bar_topscores", "title": "Top 12 perturbation scores by context", "data": {"genes": ["WDR4", "RUVBL2", "MRPS16", "CCT8", "HEMK1", "ZCCHC4", "GABARAPL1", "POLR2C", "DPAGT1", "LINC00494", "RRM2", "CMKLR1"], "C1": [null, 0.765, 0.69, 0.694, null, null, 0.328, null, null, null, null, null], "C2": [0.916, 0.772, 0.721, 0.392, 0.641, 0.64, 0.632, null, null, null, null, 0.539], "C3": [null, 0.709, 0.567, 0.512, null, null, 0.407, 0.747, 0.713, 0.638, 0.621, null]}}, "4": {"type": "heatmap_tier", "title": "Tier \u00d7 Context activity heatmap", "data": {"x": ["C1 Discovery", "C2 Primary", "C3 Secondary"], "y_genes": ["RUVBL2", "MRPS16", "CCT8", "GABARAPL1", "DAXX", "ATM", "MLYCD", "GANAB", "MAST2", "IKZF1", "WDR4", "CMKLR1", "ZCCHC4", "HEMK1", "POLR2C", "DPAGT1", "LINC00494", "RRM2", "SH3BP2", "GINS1"], "y_tier": ["A", "A", "A", "A", "A", "A", "B", "B", "B", "B", "C", "C", "C", "C", "D", "D", "D", "D", "D", "D"], "z": [[0.765, 0.772, 0.709], [0.69, 0.721, 0.567], [0.694, 0.392, 0.512], [0.328, 0.632, 0.407], [0.485, 0.488, 0.416], [0.427, 0.431, 0.1], [0.05, 0.676, 0.448], [0.05, 0.558, 0.3], [0.05, 0.514, 0.2], [0.05, 0.4, 0.39], [0.05, 0.916, 0.05], [0.05, 0.539, 0.05], [0.05, 0.64, 0.05], [0.05, 0.641, 0.05], [0.05, 0.05, 0.747], [0.05, 0.05, 0.713], [0.05, 0.05, 0.638], [0.05, 0.05, 0.621], [0.05, 0.05, 0.476], [0.05, 0.05, 0.44]]}}, "6": {"type": "radar_quality", "title": "Quality metrics radar \u2014 three contexts", "data": {"metrics": ["Strong-causal %", "MR-immune %", "Hallucination clean %", "Database evidence %", "Pathway nodes (norm.)", "Confounding clean %"], "C1": [0.9, 0.5, 56.4, 1.1, 43.77880184331797, 17.5], "C2": [0.9, 0.5, 47.0, 1.1, 13.82488479262673, 10.1], "C3": [3.4, 4.4, 82.5, 28.0, 100, 54.2]}}, "9": {"type": "bar_quality", "title": "Quality metrics across three contexts", "data": {"metrics": ["Strong-causal %", "Confounding %", "MR-immune %", "Hallucination flags %", "Database evidence %", "Direction confirmed %"], "C1": [0.9, 82.5, 0.5, 43.6, 1.1, 18.1], "C2": [0.9, 89.9, 0.5, 53.0, 1.1, 18.0], "C3": [3.4, 45.8, 4.4, 17.5, 28.0, 20.4]}}, "12": {"type": "bar_ranks_tierA", "title": "Tier A \u00b7 cross-context ranks (lower = better)", "data": {"genes": ["RUVBL2", "MRPS16", "CCT8", "GABARAPL1", "DAXX", "ATM"], "C1": [1, 3, 2, 1, 12, 16], "C2": [2, 3, 29, 7, 15, 19], "C3": [3, 6, 7, 18, 17, 48]}}, "17": {"type": "bar_tierC", "title": "Tier C \u00b7 pre-resistance sensitisers \u00b7 score and effect", "data": {"genes": ["WDR4", "HEMK1", "ZCCHC4", "CMKLR1"], "score": [0.916, 0.641, 0.64, 0.539], "effect": [-0.25, -0.162, -0.037, -0.492]}}, "18": {"type": "donut_wdr4", "title": "WDR4 score 0.916 \u2014 component breakdown", "data": {"labels": ["Disease effect (\u22120.250)", "Causal importance", "Low resistance escape (bypass 0.00)", "Low compensation risk"], "values": [35, 20, 25, 20]}}, "20": {"type": "bar_tierD", "title": "Tier D \u00b7 acquired-resistance scores", "data": {"genes": ["POLR2C", "DPAGT1", "LINC00494", "RRM2", "SH3BP2", "GINS1"], "score": [0.747, 0.713, 0.638, 0.621, 0.476, 0.44], "effect": [-1.38, -0.93, -1.655, -0.45, -0.3, -0.25]}}, "23": {"type": "waterfall_effects", "title": "Largest single-target effects in C3 Secondary", "data": {"genes": ["LINC00494", "POLR2C", "RRM2", "DPAGT1", "SH3BP2", "GINS1", "HINFP", "RPL9"], "effects": [-1.655, -1.38, -0.45, -0.93, -0.3, -0.25, 0.42, 0.38]}}, "24": {"type": "diverging_cmklr1", "title": "CMKLR1 dependency switch \u00b7 effect by FLT3 status", "data": {"groups": ["FLT3-negative (protective)", "FLT3-positive (beneficial)", "Differential (FLT3+ \u2212 FLT3\u2212)"], "values": [0.182, -0.074, -0.256]}}, "25": {"type": "bar_mettl7a", "title": "METTL7A \u00b7 NPM1 cluster vs population effect (4.6\u00d7 enrichment)", "data": {"groups": ["NPM1-mutated cluster (n=39)", "Population (n=450)"], "values": [-0.947, -0.205]}}, "27": {"type": "donut_novelty", "title": "PubMed novelty tier distribution", "data": {"labels": ["Tier \u03b1 \u00b7 fully novel (0 papers)", "Tier \u03b2 \u00b7 known biology, novel A.M.L.", "Tier \u03b3 \u00b7 known target, novel combination"], "values": [12, 4, 1]}}, "29": {"type": "scatter_combos", "title": "Combination hypotheses \u00b7 synergy index vs combined effect magnitude", "data": {"names": ["CCT8+IKZF1", "LINC00494+POLR2C", "RUVBL2+POLR2C", "POLR2C+RRM2", "RUVBL2+PSMA1", "RUVBL2+CMKLR1", "MRPS16+DPAGT1", "GABARAPL1+NBR1", "CCT8+RUVBL2", "WDR4+EPC2 \u26a0"], "synergy": [3.237, 0.951, 1.0, 1.0, 1.0, 1.0, 1.838, 1.39, 1.0, 9.004], "effect": [-1.5, -2.888, -2.191, -2.191, -1.765, -1.593, -1.37, -1.39, -1.717, -0.061]}}, "35": {"type": "scatter_artefacts", "title": "Centrality artefact diagnostic \u00b7 CI vs perturbation effect", "data": {"names": ["WDR4", "RUVBL2", "POLR2C", "DPAGT1", "TRIM33", "MLYCD \u26a0", "PPP1R3E \u26a0", "CMKLR1", "CCT8"], "ci": [2.98, 3.79, 2.9, 2.5, 4.92, 12.87, 74.1, 2.1, 3.2], "effect": [-0.25, -1.1, -1.38, -0.93, -0.2, -0.063, -0.129, -0.492, -0.4], "flag": ["true", "true", "true", "true", "mod", "artefact", "artefact", "true", "true"]}}};
+  const LAYOUT_BASE = {"paper_bgcolor": "rgba(0,0,0,0)", "plot_bgcolor": "rgba(255,255,255,0.04)", "font": {"color": "#ffffff", "family": "-apple-system, BlinkMacSystemFont, system-ui, sans-serif", "size": 11}, "margin": {"l": 60, "r": 30, "t": 40, "b": 60}, "xaxis": {"gridcolor": "rgba(255,255,255,0.10)", "zerolinecolor": "rgba(255,255,255,0.25)", "color": "#ffffff"}, "yaxis": {"gridcolor": "rgba(255,255,255,0.10)", "zerolinecolor": "rgba(255,255,255,0.25)", "color": "#ffffff"}, "legend": {"font": {"color": "#ffffff"}, "bgcolor": "rgba(0,0,0,0)"}, "title": {"font": {"color": "#ffffff", "size": 13}}};
+  const CFG = {responsive: true, displayModeBar: false};
+
+  function deepMerge(a, b) {
+    const out = JSON.parse(JSON.stringify(a));
+    for (const k in b) {
+      if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) out[k] = deepMerge(out[k] || {}, b[k]);
+      else out[k] = b[k];
+    }
+    return out;
+  }
+
+  function renderChart(idx) {
+    const cont = document.getElementById('chart-' + idx);
+    if (!cont) return;
+    if (cont.dataset.rendered === '1') return;
+    const cfg = CHARTS[idx]; if (!cfg) return;
+    const t = cfg.type, d = cfg.data;
+    let traces = [], lay = {title: cfg.title};
+
+    const COL_C1 = '#64b5f6', COL_C2 = '#ba68c8', COL_C3 = '#ff8a65';
+    const ACCENT = '#4fc3f7', HI = '#ffd54f', GOOD = '#81c784', BAD = '#e57373', WARN = '#ffb74d';
+
+    if (t === 'bar_topscores') {
+      traces = [
+        {x: d.genes, y: d.C1, type: 'bar', name: 'C1 Discovery', marker: {color: COL_C1}},
+        {x: d.genes, y: d.C2, type: 'bar', name: 'C2 Primary',   marker: {color: COL_C2}},
+        {x: d.genes, y: d.C3, type: 'bar', name: 'C3 Secondary', marker: {color: COL_C3}},
+      ];
+      lay = {...lay, barmode: 'group', yaxis: {title: 'Perturbation score', range: [0, 1.0]}};
+    }
+    else if (t === 'heatmap_tier') {
+      const ylabels = d.y_genes.map((g,i) => '['+d.y_tier[i]+'] '+g);
+      traces = [{
+        z: d.z, x: d.x, y: ylabels, type: 'heatmap',
+        colorscale: [[0,'#0a1929'],[0.2,'#1e3a5f'],[0.5,'#4fc3f7'],[0.85,'#ffd54f'],[1.0,'#ff5252']],
+        showscale: true, hoverongaps: false,
+        colorbar: {title: 'Score', tickfont: {color: '#fff'}}
+      }];
+      lay = {...lay, yaxis: {autorange: 'reversed'}, height: 480};
+    }
+    else if (t === 'radar_quality') {
+      traces = [
+        {type: 'scatterpolar', r: d.C1.concat([d.C1[0]]), theta: d.metrics.concat([d.metrics[0]]), fill: 'toself', name: 'C1 Discovery', line: {color: COL_C1}},
+        {type: 'scatterpolar', r: d.C2.concat([d.C2[0]]), theta: d.metrics.concat([d.metrics[0]]), fill: 'toself', name: 'C2 Primary',   line: {color: COL_C2}},
+        {type: 'scatterpolar', r: d.C3.concat([d.C3[0]]), theta: d.metrics.concat([d.metrics[0]]), fill: 'toself', name: 'C3 Secondary', line: {color: COL_C3}},
+      ];
+      lay = {...lay, polar: {bgcolor: 'rgba(255,255,255,0.04)', radialaxis: {visible: true, range: [0, 100], gridcolor: 'rgba(255,255,255,0.15)', color: '#fff'}, angularaxis: {color: '#fff'}}};
+    }
+    else if (t === 'bar_quality') {
+      traces = [
+        {x: d.metrics, y: d.C1, type: 'bar', name: 'C1', marker: {color: COL_C1}},
+        {x: d.metrics, y: d.C2, type: 'bar', name: 'C2', marker: {color: COL_C2}},
+        {x: d.metrics, y: d.C3, type: 'bar', name: 'C3', marker: {color: COL_C3}},
+      ];
+      lay = {...lay, barmode: 'group', yaxis: {title: 'Percent (%)'}};
+    }
+    else if (t === 'bar_ranks_tierA') {
+      traces = [
+        {x: d.genes, y: d.C1, type: 'bar', name: 'C1', marker: {color: COL_C1}},
+        {x: d.genes, y: d.C2, type: 'bar', name: 'C2', marker: {color: COL_C2}},
+        {x: d.genes, y: d.C3, type: 'bar', name: 'C3', marker: {color: COL_C3}},
+      ];
+      lay = {...lay, barmode: 'group', yaxis: {title: 'Rank (lower = better)', autorange: 'reversed'}};
+    }
+    else if (t === 'bar_tierC' || t === 'bar_tierD') {
+      traces = [
+        {x: d.genes, y: d.score, type: 'bar', name: 'Score', marker: {color: ACCENT}, yaxis: 'y'},
+        {x: d.genes, y: d.effect, type: 'scatter', mode: 'lines+markers', name: 'Effect', marker: {color: HI, size: 10}, line: {color: HI, width: 2}, yaxis: 'y2'},
+      ];
+      lay = {...lay,
+        yaxis:  {title: 'Score', side: 'left', gridcolor: 'rgba(255,255,255,0.10)', color: '#fff'},
+        yaxis2: {title: 'Effect', side: 'right', overlaying: 'y', gridcolor: 'rgba(0,0,0,0)', color: '#ffd54f'},
+      };
+    }
+    else if (t === 'donut_wdr4' || t === 'donut_novelty') {
+      const colors = (t === 'donut_wdr4')
+        ? ['#4fc3f7','#81d4fa','#ffd54f','#81c784']
+        : ['#4fc3f7','#ba68c8','#ffd54f'];
+      traces = [{
+        type: 'pie', hole: 0.55, labels: d.labels, values: d.values,
+        marker: {colors: colors, line: {color: '#0a1929', width: 2}},
+        textinfo: 'label+percent', textfont: {color: '#fff', size: 11}, hoverinfo: 'label+value+percent'
+      }];
+      lay = {...lay, showlegend: false};
+    }
+    else if (t === 'waterfall_effects') {
+      const colors = d.effects.map(v => v < 0 ? GOOD : BAD);
+      traces = [{
+        x: d.genes, y: d.effects, type: 'bar',
+        marker: {color: colors},
+        text: d.effects.map(v => (v > 0 ? '+' : '') + v.toFixed(2)),
+        textposition: 'outside', textfont: {color: '#fff'}
+      }];
+      lay = {...lay, yaxis: {title: 'Disease effect'}};
+    }
+    else if (t === 'diverging_cmklr1') {
+      const colors = d.values.map(v => v < 0 ? GOOD : BAD);
+      traces = [{
+        x: d.values, y: d.groups, type: 'bar', orientation: 'h',
+        marker: {color: colors},
+        text: d.values.map(v => (v > 0 ? '+' : '') + v.toFixed(3)),
+        textposition: 'outside', textfont: {color: '#fff'}
+      }];
+      lay = {...lay, xaxis: {title: 'Effect (− beneficial · + harmful)', zeroline: true, zerolinecolor: '#fff', zerolinewidth: 2}, margin: {l: 220, r: 60, t: 40, b: 60}};
+    }
+    else if (t === 'bar_mettl7a') {
+      const colors = ['#ffd54f', '#4fc3f7'];
+      traces = [{
+        x: d.groups, y: d.values, type: 'bar',
+        marker: {color: colors},
+        text: d.values.map(v => v.toFixed(3)),
+        textposition: 'outside', textfont: {color: '#fff', size: 14}
+      }];
+      lay = {...lay, yaxis: {title: 'Disease effect'}, showlegend: false};
+    }
+    else if (t === 'scatter_combos') {
+      const sizes = d.effect.map(e => Math.max(8, Math.abs(e) * 12));
+      const colors = d.synergy.map((s,i) => i === 9 ? WARN : (s >= 2 ? HI : ACCENT));
+      traces = [{
+        x: d.synergy, y: d.effect.map(e => Math.abs(e)), mode: 'markers+text',
+        type: 'scatter',
+        marker: {size: sizes, color: colors, line: {color: '#fff', width: 1}},
+        text: d.names, textposition: 'top center', textfont: {color: '#fff', size: 10},
+        hovertemplate: '%{text}<br>Synergy: %{x}<br>|Effect|: %{y}<extra></extra>'
+      }];
+      lay = {...lay,
+        xaxis: {title: 'Synergy index (log)', type: 'log'},
+        yaxis: {title: '|Combined effect|'},
+        height: 420
+      };
+    }
+    else if (t === 'scatter_artefacts') {
+      const colors = d.flag.map(f => f === 'artefact' ? BAD : (f === 'true' ? GOOD : ACCENT));
+      const sizes  = d.flag.map(f => f === 'artefact' ? 18 : 12);
+      traces = [{
+        x: d.ci, y: d.effect.map(e => Math.abs(e)), mode: 'markers+text', type: 'scatter',
+        marker: {size: sizes, color: colors, line: {color: '#fff', width: 1.2}},
+        text: d.names, textposition: 'top center', textfont: {color: '#fff', size: 11},
+        hovertemplate: '%{text}<br>CI: %{x}<br>|Effect|: %{y}<extra></extra>'
+      }];
+      lay = {...lay,
+        xaxis: {title: 'Causal Importance (CI) — log scale', type: 'log'},
+        yaxis: {title: '|Perturbation effect|'},
+        shapes: [
+          {type: 'line', x0: 10, x1: 10, y0: 0, y1: 1.6, line: {color: BAD, dash: 'dot', width: 1.5}},
+        ],
+        annotations: [
+          {x: 1.05, y: 1.55, xref: 'x', yref: 'y', text: 'True regulators<br>(moderate CI · high effect)', showarrow: false, font: {color: GOOD, size: 11}, xanchor: 'left'},
+          {x: 30,   y: 0.10, xref: 'x', yref: 'y', text: 'Hub-isolation artefacts<br>(high CI · low effect)', showarrow: false, font: {color: BAD, size: 11}, xanchor: 'left'}
+        ],
+        height: 420
+      };
+    }
+
+    Plotly.newPlot(cont, traces, deepMerge(LAYOUT_BASE, lay), CFG);
+    cont.dataset.rendered = '1';
+  }
+
+  // Render charts as their slide becomes active (lazy).
+  function renderActiveSlideCharts() {
+    document.querySelectorAll('.slide.active .chart').forEach(c => {
+      const idx = parseInt(c.id.replace('chart-', ''), 10);
+      renderChart(idx);
+    });
+  }
+
+  // Hook into the existing show() function by observing class changes
+  const obs = new MutationObserver(() => renderActiveSlideCharts());
+  document.querySelectorAll('.slide').forEach(s => obs.observe(s, {attributes: true, attributeFilter: ['class']}));
+  // Initial render
+  setTimeout(renderActiveSlideCharts, 200);
+  window.addEventListener('resize', () => {
+    document.querySelectorAll('.chart[data-rendered="1"]').forEach(c => Plotly.Plots.resize(c));
+  });
+</script>
+
+</body>
+</html>
